@@ -1,0 +1,12 @@
+lex.yy.c
+a.out
+y.tab.h
+y.tab.c
+lilDuck
+parser.tab.c
+parser.tab.h
+.lexer.l.kate-swp
+.parser.y.kate-swp
+iwtd
+testSymTab
+.vscode/

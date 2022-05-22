@@ -1,0 +1,63 @@
+program example;
+
+class padre {
+    var st nombre;
+    // originalmente se llamaba writeNombre pero detecta el wr de write como la palabra reservada, se debe de arreglar eso
+    fun vo writeNombre() {
+        wr("El nombre es ", nombre);
+    }
+}
+
+class hijo -> padre {
+    var in edad;
+
+    fun vo pelos() {
+        wr("Pelos");
+    }
+}
+
+
+var in a, b, c[3], d, cont;
+var hijo h;
+
+
+fun flt doh(in num) {
+    rt num/2;
+}
+
+fun vo mayor(in num1, in num2) {
+    if (num1 > num2) {
+        wr(num1, " es mayor");
+    } elif (num2 > num1) {
+        wr(num2, " es mayor");
+    } else {
+        wr("Son iguales");
+    }
+}
+
+main () {
+    var in lala;
+    var in laa;
+    a = 10;
+    b = 5;
+    c[0] = 1;
+    c[1] = 5;
+    c[3] = mayor(1, 2);
+
+    wr("Ingrese el valor de d");
+    rd(d);
+    h.edad = d;
+
+    cont = 3;
+    wh(cont > 0) {
+        h.pelos();
+        cont = cont - 1;
+    }
+    divEntre2(a);
+    wr("10 entre 2 es ", divEntre2(a));
+
+    fo(cont = 1; cont <= 3; cont = cont + 1) {
+        mayor(b, c[cont]);
+    }
+
+}

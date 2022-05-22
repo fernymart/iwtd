@@ -1,0 +1,15 @@
+program exampleBasicQuads;
+
+main () {
+    var in lala;
+    var in laa;
+    var in a;
+    var in b;
+    c[0] = 1;
+    c[1] = 5;
+    c[3] = mayor(1, 2);
+
+    wr("Ingrese el valor de d");
+    rd(d);
+
+}
