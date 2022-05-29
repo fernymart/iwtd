@@ -21,10 +21,10 @@ whitespace (" " | [\t] | [\n] | [\r])
 "->"                    { return INHERIT; }
 "main"                  { return MAIN; }
 
-"in"                    { return INT; }
-"flt"                   { return FLOAT; }
-"st"                    { return STRING; }
-"ch"                    { return CHAR; }
+"in"                    { yylval.id = (char *) strdup(yytext); return INT; }
+"flt"                   { yylval.id = (char *) strdup(yytext); return FLOAT; }
+"st"                    { yylval.id = (char *) strdup(yytext); return STRING; }
+"ch"                    { yylval.id = (char *) strdup(yytext); return CHAR; }
 
 "fun"                   { return FUN; }
 "vo"                    { return VOID; }

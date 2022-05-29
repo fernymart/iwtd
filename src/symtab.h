@@ -11,10 +11,27 @@ private:
     std::string dataType;
     std::string scope;
     int lineNum;
+    int address;
 public:
     Entry(std::string id, std::string type, std::string dataType, std::string scope, int lineNum);
 
     std::string getID(){return this->id;};
+    void setID(std::string id){this->id = id;};
+
+    std::string getType(){return this->type;};
+    void setType(std::string type){this->type = type;};
+
+    std::string getDataType(){return this->dataType;};
+    void setID(std::string dataType){this->dataType = dataType;};
+
+    std::string getScope(){return this->scope;};
+    void setID(std::string id){this->id = id;};
+
+    int getLineNum(){return this->lineNum;};
+    void setID(std::string id){this->id = id;};
+
+    int getLineNum(){return this->lineNum;};
+    void setID(std::string id){this->id = id;};
 };
 
 Entry::Entry(std::string id, std::string type, std::string dataType, std::string scope, int lineNum){
@@ -41,6 +58,9 @@ public:
     bool add(std::string id, std::string type, std::string dataType, std::string scope, int lineNum);
 
     Entry search(std::string id);
+
+
+    void setID(std::string id){ this->id = id;};
 
     std::string getID(){return this->id;};
     // int hashFuntion(std::string id);

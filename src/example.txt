@@ -1,31 +1,15 @@
 program example;
 
-class padre {
-    var st nombre;
-    // originalmente se llamaba writeNombre pero detecta el wr de write como la palabra reservada, se debe de arreglar eso
-    fun vo writeNombre() {
-        wr("El nombre es ", nombre);
-    }
-}
-
-class hijo -> padre {
-    var in edad;
-
-    fun vo pelos() {
-        wr("Pelos");
-    }
-}
-
-
 var in a, b, c[3], d, cont;
-var hijo h;
 
 
 fun flt doh(in num) {
+    var flt lala;
     rt num/2;
 }
 
 fun vo mayor(in num1, in num2) {
+    var flt xd;
     if (num1 > num2) {
         wr(num1, " es mayor");
     } elif (num2 > num1) {

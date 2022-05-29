@@ -3,6 +3,7 @@
     #include <iostream>
     #include <string>
     #include <unordered_map>
+    #include <stack>
 
     #include "funcTab.h"
     #include "quadruples.h"
@@ -16,23 +17,50 @@
     extern int yyparse();
     extern FILE *yyin;
 
+    std::string currentType;
+
+
     SymTab *currScope;
     SymTab global;
+    SymTab constantes;
+
+    SymTab tempScope;
+
+    int addressIntLocal;
+    int addressFltLocal;
+    int addressCharLocal;
+
+    int addressIntGlobal;
+    int addressFltGlobal;
+    int addressCharGlobal;
+
+    int addressIntTemp;
+    int addressFltTemp;
+    int addressCharTemp;
+    int addressBoolTemp;
 
     /*
-    Declarar tabla de clases
-    Declarar tabla de funciones globales
-    Declarar tabla de constantes
+    Declarar tabla de clases -- ya no es necesario
+    Declarar tabla de funciones globales -- listo
+    Declarar tabla de constantes -- listo
+    */
+
+    /*
+    Declarar las direcciones bases para cada tipo y scope (global, local, temp y constante)
     */
 
     FuncTab functions;
 
     std::string currSignature = "";
+
+    std::stack<std::string> pOper;
+    //aqui va pOperandos/Tipos
+    std::stack<int> pSaltos;
+
     /*
-        Declarar pila de operadores
-        Declarar pila de operandos y tipos (hacer un struct de operando y su tipo)
-        Declarar pila de saltos
-        Declarar pila de scopes (top es el current scope)
+        Declarar pila de operadores -- listo
+        Declarar pila de operandos y tipos (hacer un struct de operando y su tipo) -- falta
+        Declarar pila de saltos -- listo
     */
 
     void yyerror(const char *s);
@@ -43,12 +71,13 @@
     char* id;
     int value;
     int dir;
+    char* type;
 
 //     FunctionEntry funcScope;
 }
 
 %token PROGRAM VAR CLASS INHERIT MAIN
-%token INT FLOAT STRING CHAR
+%token <type> INT FLOAT STRING CHAR
 %token FUN VOID RETURN
 %token IF ELIF ELSE
 %token WHILE FOR
@@ -66,7 +95,7 @@
 %left ADD SUB MULT DIV
 %right G_ET L_ET EQ NEQ GT LT ASGN
 //
-// %type<dir> VAR_CTE
+%type<type> TIPO_SIMPLE;
 
 %%
 PROGRAMA: PROGRAM ID SMCLN {
@@ -106,13 +135,18 @@ DEC_MAIN: MAIN {
     */
     functions.addFuncTable("main", 'v', "main");
 
-    SymTab tempScope = functions.getFunction("main").getVarTab();
+    tempScope = functions.getFunction("main").getVarTab();
     currScope = &tempScope;
 }
-LP RP LCB ESTATUTOS RCB;
+LP RP LCB ESTATUTOS RCB {
+    functions.updateFuncTable("main", tempScope);
+    currScope = &global;
+};
 
 VARIABLES: VAR TIPO_SIMPLE ID VAR_ARR VAR_MULTIPLE SMCLN {
-    currScope->add($3, "var", "dfs", "global", yylineno);
+    currentType = $2;
+//     std::cout << $2 << '\n';
+    currScope->add($3, "var", currentType, "global", yylineno);
 }
 | VAR ID ID VAR_ARR VAR_MULTIPLE SMCLN;
 
@@ -122,7 +156,9 @@ VAR_ARR: LSB CTE_INT RSB VAR_MAT
 VAR_MAT: LSB CTE_INT RSB
 | ;
 
-VAR_MULTIPLE: COMMA ID VAR_ARR VAR_MULTIPLE
+VAR_MULTIPLE: COMMA ID {
+    currScope->add($2, "var", currentType, "global", yylineno);
+} VAR_ARR VAR_MULTIPLE
 | ;
 
 TIPO_SIMPLE: INT
@@ -133,8 +169,24 @@ TIPO_SIMPLE: INT
 DEC_METODOS: FUNCION DEC_METODOS
 | ;
 
-FUNCION: FUN TIPO_SIMPLE ID LP PARAMETROS RP LCB DEC_ATRIBUTOS ESTATUTOS RCB
-| FUN VOID ID LP PARAMETROS RP LCB DEC_ATRIBUTOS ESTATUTOS RCB;
+FUNCION: FUN TIPO_SIMPLE ID{
+    functions.addFuncTable($3, 'v', $3);
+
+    tempScope = functions.getFunction($3).getVarTab();
+    currScope = &tempScope;
+} LP PARAMETROS RP LCB DEC_ATRIBUTOS ESTATUTOS RCB{
+    functions.updateFuncTable($3, tempScope);
+    currScope = &global;
+}
+| FUN VOID ID{
+    functions.addFuncTable($3, 'v', $3);
+
+    tempScope = functions.getFunction($3).getVarTab();
+    currScope = &tempScope;
+} LP PARAMETROS RP LCB DEC_ATRIBUTOS ESTATUTOS RCB{
+    functions.updateFuncTable($3, tempScope);
+    currScope = &global;
+};
 
 PARAMETROS: TIPO_SIMPLE ID PARAMETROS_MULTIPLE
 | ;
@@ -164,7 +216,9 @@ LLAMADA: FUNC_ID LP PONER_PARAM RP;
 FUNC_ID: ID
 | ID DOT ID;
 
-PONER_PARAM: EXP {cout<<"parametro 1 encontrado " ;} LLAMADA_MULTIPLE
+PONER_PARAM: EXP {
+//     cout<<"parametro 1 encontrado " ;
+} LLAMADA_MULTIPLE
 | ;
 
 LLAMADA_MULTIPLE: COMMA EXP LLAMADA_MULTIPLE
@@ -292,22 +346,28 @@ int main(int, char** c){
     yyin = myfile;
     yyparse();
 
-//     std::unordered_map<std::string, Entry> table = global.getTable();
-//     for(auto& it: table){
-//         cout << it.second.getID() << '\n';
-//     }
-
-    std::unordered_map<std::string, Entry> tableFunctions = functions.getFunction("main").getVarTab().getTable();
-
-    for(auto& it: tableFunctions){
-        std::cout << it.second.getID() << '\n';
+    std::unordered_map<std::string, Entry> table = global.getTable();
+    for(auto& it: table){
+        cout << it.second.getID() << '\n';
     }
+
+//     std::unordered_map<std::string, Entry> tableFunctions = functions.getFunction("main").getVarTab().getTable();
+//
+//     for(auto& it: tableFunctions){
+//         std::cout << it.second.getID() << '\n';
+//     }
 
     std::unordered_map<std::string, FunctionEntry> functionEntries = functions.getFunctions();
 
     for(auto& it: functionEntries){
-        std::cout << it.first << " " << it.second.getVarTab().get << '\n';
-        std::cout << (it.first == it.second.getName()) << '\n';
+//         std::cout << it.first << " " << it.second.getVarTab().getID() << '\n';
+        std::cout << "Function name: " << it.second.getName() << '\n';
+
+         std::unordered_map<std::string, Entry> funcEntries = it.second.getVarTab().getTable();
+
+        for(auto& it2: funcEntries){
+            std::cout << it2.second.getID() << " " << it2.second.getDataType() << '\n';
+        }
     }
     return 0;
 }
@@ -320,4 +380,16 @@ void yyerror(const char *s){
 
 void createQuad(std::string command, std::string op1, std::string op2, std::string res){
     cout << command << " " << op1 << " " << op2 << " " << res << '\n';
+}
+
+bool checkExists(std::string id){
+
+}
+
+int getAddress(std::string id){
+
+}
+
+int checkResultType(int operation, int lOperator, rOperator){
+
 }

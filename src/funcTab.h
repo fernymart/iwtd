@@ -45,6 +45,8 @@ public:
     void addFuncTable(std::string id, char retType, std::string scope);
     void addFuncTable(std::string id, FunctionEntry newEntry);
 
+    void updateFuncTable(std::string id, SymTab newEntry);
+
     FunctionEntry getFunction(std::string id);
     std::unordered_map<std::string, FunctionEntry> getFunctions(){return this->funcEntries;};
 };
@@ -60,7 +62,7 @@ FuncTab::FuncTab(std::string name){
 }
 
 FunctionEntry FuncTab::getFunction(std::string id){
-    std::cout << id << '\n';
+//     std::cout << id << '\n';
     std::unordered_map<std::string, FunctionEntry>::const_iterator x = this->funcEntries.find(id);
     return x->second;
 }
@@ -72,6 +74,13 @@ void FuncTab::addFuncTable(std::string id, char retType, std::string scope){
 
 void FuncTab::addFuncTable(std::string id, FunctionEntry newEntry){
     funcEntries.insert(make_pair(id, newEntry));
+}
+
+void FuncTab::updateFuncTable(std::string id, SymTab newEntry){
+    std::unordered_map<std::string, FunctionEntry>::iterator it = this->funcEntries.find(id);
+    if(it != this->funcEntries.end()){
+        it->second.setVarTab(newEntry);
+    }
 }
 
 #endif
