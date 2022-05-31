@@ -7,6 +7,7 @@
 
     #include "funcTab.h"
     #include "quadruples.h"
+    #include "semanticCube.h"
 
 
     #define YYERROR_VERBOSE 1
@@ -26,19 +27,48 @@
 
     SymTab tempScope;
 
-    int addressIntLocal;
-    int addressFltLocal;
-    int addressCharLocal;
+    int addressIntLocal = 5000;
+    int addressFltLocal = 7000;
+    int addressCharLocal = 9000;
 
-    int addressIntGlobal;
-    int addressFltGlobal;
-    int addressCharGlobal;
+    int addressIntGlobal = 1000;
+    int addressFltGlobal = 2000;
+    int addressCharGlobal = 3000;
 
     int addressIntTemp;
     int addressFltTemp;
     int addressCharTemp;
     int addressBoolTemp;
 
+    int addressIntCurr;
+    int addressFltCurr;
+    int addressCharCurr;
+
+    int currAdd;
+
+    std::unordered_map<std::string, int> types = {
+        {"in", 0},
+        {"flt", 1},
+        {"ch", 2},
+        {"boo", 3},
+        {"*", 0},
+        {"/", 1},
+        {"+", 2},
+        {"-", 3},
+        {">", 4},
+        {">=",5},
+        {"<", 6},
+        {"<=",7},
+        {"==",8},
+        {"&&",9},
+        {"||",10},
+
+    };
+
+    struct opTipos{
+        std::string id;
+        std::string tipo;
+    };
     /*
     Declarar tabla de clases -- ya no es necesario
     Declarar tabla de funciones globales -- listo
@@ -54,7 +84,7 @@
     std::string currSignature = "";
 
     std::stack<std::string> pOper;
-    //aqui va pOperandos/Tipos
+    std::stack<opTipos> pilaO;
     std::stack<int> pSaltos;
 
     /*
@@ -99,30 +129,33 @@
 
 %%
 PROGRAMA: PROGRAM ID SMCLN {
-
-    /*
-    Punto neuralgico 1, se encarga de:
-    -
-    -
-    */
     functions = FuncTab($2);
     global = SymTab("global", "global var table");
     currScope = &global;
-} DEC_CLASES DEC_ATRIBUTOS DEC_METODOS DEC_MAIN;
 
-DEC_CLASES: CLASE DEC_CLASES
-| ;
-
-CLASE: CLASS ID CLASE_HEREDA {
     /*
-    Punto neuralgico de las clases, se encarga de:
-    -
-    -
+        Declaramos que nuestras direcciones actuales son las globales
     */
-} LCB DEC_ATRIBUTOS DEC_METODOS RCB;
 
-CLASE_HEREDA: INHERIT ID
-| ;
+    addressIntCurr = addressIntGlobal;
+    addressFltCurr = addressFltGlobal;
+    addressCharCurr = addressCharGlobal;
+
+} DEC_ATRIBUTOS DEC_METODOS DEC_MAIN;
+
+// DEC_CLASES: CLASE DEC_CLASES
+// | ;
+//
+// CLASE: CLASS ID CLASE_HEREDA {
+//     /*
+//     Punto neuralgico de las clases, se encarga de:
+//     -
+//     -
+//     */
+// } LCB DEC_ATRIBUTOS DEC_METODOS RCB;
+//
+// CLASE_HEREDA: INHERIT ID
+// | ;
 
 DEC_ATRIBUTOS: VARIABLES DEC_ATRIBUTOS
 | ;
@@ -133,7 +166,7 @@ DEC_MAIN: MAIN {
     -
     -
     */
-    functions.addFuncTable("main", 'v', "main");
+    functions.addFuncTable("main", "vo", "main");
 
     tempScope = functions.getFunction("main").getVarTab();
     currScope = &tempScope;
@@ -143,11 +176,12 @@ LP RP LCB ESTATUTOS RCB {
     currScope = &global;
 };
 
-VARIABLES: VAR TIPO_SIMPLE ID VAR_ARR VAR_MULTIPLE SMCLN {
+VARIABLES: VAR TIPO_SIMPLE ID{
     currentType = $2;
 //     std::cout << $2 << '\n';
-    currScope->add($3, "var", currentType, "global", yylineno);
-}
+
+    currScope->add($3, "var", currentType, "global", yylineno, currAdd++);
+} VAR_ARR VAR_MULTIPLE SMCLN
 | VAR ID ID VAR_ARR VAR_MULTIPLE SMCLN;
 
 VAR_ARR: LSB CTE_INT RSB VAR_MAT
@@ -157,29 +191,34 @@ VAR_MAT: LSB CTE_INT RSB
 | ;
 
 VAR_MULTIPLE: COMMA ID {
-    currScope->add($2, "var", currentType, "global", yylineno);
+    currScope->add($2, "var", currentType, "global", yylineno, currAdd++);
 } VAR_ARR VAR_MULTIPLE
 | ;
 
-TIPO_SIMPLE: INT
-|FLOAT
+TIPO_SIMPLE: INT {currAdd = addressIntCurr;}
+|FLOAT {currAdd = addressFltCurr;}
 |STRING
-|CHAR;
+|CHAR {currAdd = addressCharCurr;};
 
 DEC_METODOS: FUNCION DEC_METODOS
 | ;
 
 FUNCION: FUN TIPO_SIMPLE ID{
-    functions.addFuncTable($3, 'v', $3);
 
+    functions.addFuncTable($3, $2, $3);
     tempScope = functions.getFunction($3).getVarTab();
     currScope = &tempScope;
+
+    /*
+
+    */
+
 } LP PARAMETROS RP LCB DEC_ATRIBUTOS ESTATUTOS RCB{
     functions.updateFuncTable($3, tempScope);
     currScope = &global;
 }
 | FUN VOID ID{
-    functions.addFuncTable($3, 'v', $3);
+    functions.addFuncTable($3, "vo", $3);
 
     tempScope = functions.getFunction($3).getVarTab();
     currScope = &tempScope;
@@ -188,7 +227,9 @@ FUNCION: FUN TIPO_SIMPLE ID{
     currScope = &global;
 };
 
-PARAMETROS: TIPO_SIMPLE ID PARAMETROS_MULTIPLE
+PARAMETROS: TIPO_SIMPLE ID {
+    currScope->add($2, "parametro", $1, "funcion", yylineno, currAdd++);
+} PARAMETROS_MULTIPLE
 | ;
 
 PARAMETROS_MULTIPLE: COMMA PARAMETROS
@@ -250,7 +291,7 @@ INIT: VARIABLE ASGN EXP
 
 STEP: VARIABLE ASGN EXP;
 
-VARIABLE: ID VARIABLE_COMP;
+VARIABLE: ID VARIABLE_COMP {pilaO.push({$1, "try"});};
 
 VARIABLE_COMP: LSB EXP RSB VARIABLE_MAT
 | DOT ID
@@ -346,9 +387,14 @@ int main(int, char** c){
     yyin = myfile;
     yyparse();
 
+    cout << types["i"] << '\t' << types["i"] << '\t' << types["+"] << '\n';
+
+    std::cout << "SHEEESH " << checkCube(types["+"], types["i"], types["i"]) << '\n';
+    std::cout << "SHEEESH " << checkCube(2, 0, 0) << '\n';
+
     std::unordered_map<std::string, Entry> table = global.getTable();
     for(auto& it: table){
-        cout << it.second.getID() << '\n';
+        cout << it.second.getID() << " " << it.second.getDataType() << " " << it.second.getAddress() << '\n';
     }
 
 //     std::unordered_map<std::string, Entry> tableFunctions = functions.getFunction("main").getVarTab().getTable();
@@ -366,8 +412,16 @@ int main(int, char** c){
          std::unordered_map<std::string, Entry> funcEntries = it.second.getVarTab().getTable();
 
         for(auto& it2: funcEntries){
-            std::cout << it2.second.getID() << " " << it2.second.getDataType() << '\n';
+            std::cout << it2.second.getID() << " " << it2.second.getDataType() << " " << it2.second.getAddress() << '\n';
         }
+    }
+
+    std::cout << "Inicia pilaO\n";
+
+    while(!pilaO.empty()){
+        std::cout << pilaO.top().id << '\t' << pilaO.top().tipo << '\n';
+        pilaO.pop();
+
     }
     return 0;
 }
@@ -390,6 +444,6 @@ int getAddress(std::string id){
 
 }
 
-int checkResultType(int operation, int lOperator, rOperator){
-
+int checkResultType(std::string operation, std::string lOper, std::string rOper){
+    return checkCube(types[lOper], types[rOper], types[operation]);
 }

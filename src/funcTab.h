@@ -9,13 +9,13 @@
 class FunctionEntry{
 private:
     std::string name;
-    char retType;
+    std::string retType;
     std::string signature;
     SymTab varTable;
 public:
-    FunctionEntry(std::string name, char retType, std::string signature);
+    FunctionEntry(std::string name, std::string retType, std::string signature);
 
-    void addToVarTab(std::string id, std::string type, std::string dataType, std::string scope, int lineNum);
+    void addToVarTab(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address);
 
     SymTab getVarTab(){return this->varTable;};
     std::string getName(){return this->name;};
@@ -23,15 +23,15 @@ public:
     void setVarTab(SymTab newVarTab){this->varTable = newVarTab;};
 };
 
-FunctionEntry::FunctionEntry(std::string name, char retType, std::string signature){
+FunctionEntry::FunctionEntry(std::string name, std::string retType, std::string signature){
     this->name = name;
     this->retType = retType;
     this->signature = signature;
     this->varTable = SymTab(name, name);
 }
 
-void FunctionEntry::addToVarTab(std::string id, std::string type, std::string dataType, std::string scope, int lineNum){
-    this->varTable.add(id, type, dataType, scope, lineNum);
+void FunctionEntry::addToVarTab(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address){
+    this->varTable.add(id, type, dataType, scope, lineNum, address);
 }
 
 class FuncTab{
@@ -42,7 +42,7 @@ public:
     FuncTab();
     FuncTab(std::string name);
 
-    void addFuncTable(std::string id, char retType, std::string scope);
+    void addFuncTable(std::string id, std::string retType, std::string scope);
     void addFuncTable(std::string id, FunctionEntry newEntry);
 
     void updateFuncTable(std::string id, SymTab newEntry);
@@ -67,7 +67,7 @@ FunctionEntry FuncTab::getFunction(std::string id){
     return x->second;
 }
 
-void FuncTab::addFuncTable(std::string id, char retType, std::string scope){
+void FuncTab::addFuncTable(std::string id, std::string retType, std::string scope){
     FunctionEntry temp = FunctionEntry(id, retType, scope);
     funcEntries.insert(make_pair(id, temp));
 }
@@ -82,5 +82,7 @@ void FuncTab::updateFuncTable(std::string id, SymTab newEntry){
         it->second.setVarTab(newEntry);
     }
 }
+
+
 
 #endif

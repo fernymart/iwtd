@@ -1,6 +1,8 @@
 program example;
 
 var in a, b, c[3], d, cont;
+var flt fl1, fl2, fl3;
+var in e;
 
 
 fun flt doh(in num) {
@@ -27,14 +29,13 @@ main () {
     c[0] = 1;
     c[1] = 5;
     c[3] = mayor(1, 2);
+    d = a + b;
 
     wr("Ingrese el valor de d");
     rd(d);
-    h.edad = d;
 
     cont = 3;
     wh(cont > 0) {
-        h.pelos();
         cont = cont - 1;
     }
     divEntre2(a);
