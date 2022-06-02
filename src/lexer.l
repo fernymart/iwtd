@@ -42,10 +42,10 @@ whitespace (" " | [\t] | [\n] | [\r])
 
 {id}                    { yylval.id = (char *) strdup(yytext); return ID; }
 
-[0-9]+                  { return CTE_INT; }
-{digits}\.{digits}      { return CTE_FLT; }
-[']{letter}|{digit}[']  { return CTE_CHR; }
-["].*["]                { return CTE_STR; }
+[-]?[0-9]+              { yylval.id = (char *) strdup(yytext); return CTE_INT; }
+[-]?{digit}+\.{digit}+  { yylval.id = (char *) strdup(yytext); return CTE_FLT; }
+[']{letter}|{digit}[']  { yylval.id = (char *) strdup(yytext); return CTE_CHR; }
+["].*["]                { yylval.id = (char *) strdup(yytext); return CTE_STR; }
 
 
 
@@ -54,19 +54,19 @@ whitespace (" " | [\t] | [\n] | [\r])
 ":"                     { return CLN; }
 ";"                     { return SMCLN; }
 
-"+"                     { return ADD; }
-"-"                     { return SUB; }
-"*"                     { return MULT; }
-"/"                     { return DIV; }
+"+"                     { yylval.id = (char *) strdup(yytext); return ADD; }
+"-"                     { yylval.id = (char *) strdup(yytext); return SUB; }
+"*"                     { yylval.id = (char *) strdup(yytext); return MULT; }
+"/"                     { yylval.id = (char *) strdup(yytext); return DIV; }
 
-">="                    { return G_ET; }
-"<="                    { return L_ET; }
-"=="                    { return EQ; }
-"!="                    { return NEQ; }
-">"                     { return GT; }
-"<"                     { return LT; }
-"="                     { return ASGN; }
-"<>"                    { return NEQ; }
+">="                    { yylval.id = (char *) strdup(yytext); return G_ET; }
+"<="                    { yylval.id = (char *) strdup(yytext); return L_ET; }
+"=="                    { yylval.id = (char *) strdup(yytext); return EQ; }
+"!="                    { yylval.id = (char *) strdup(yytext); return NEQ; }
+">"                     { yylval.id = (char *) strdup(yytext); return GT; }
+"<"                     { yylval.id = (char *) strdup(yytext); return LT; }
+"="                     { yylval.id = (char *) strdup(yytext); return ASGN; }
+"<>"                    { yylval.id = (char *) strdup(yytext); return NEQ; }
 
 "("                     { return LP; }
 ")"                     { return RP; }

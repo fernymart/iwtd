@@ -5,9 +5,19 @@ var flt fl1, fl2, fl3;
 var in e;
 
 
-fun flt doh(in num) {
-    var flt lala;
-    rt num/2;
+fun void fibonacci(in lim) {
+    var in num1 = 0;
+    var in num2 = 1;
+    var in cont = 0;
+    var in sig = 0;
+    wr(num1, " ", num2);
+    wh(cont < num){
+        sig = num1 + num2;
+        wr(" ", sig);
+        num1 = num2;
+        num2 = sig;
+        cont++;
+    }
 }
 
 fun vo mayor(in num1, in num2) {
@@ -19,6 +29,7 @@ fun vo mayor(in num1, in num2) {
     } else {
         wr("Son iguales");
     }
+    rt xd;
 }
 
 main () {

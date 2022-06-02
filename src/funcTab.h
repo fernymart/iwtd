@@ -20,6 +20,8 @@ public:
     SymTab getVarTab(){return this->varTable;};
     std::string getName(){return this->name;};
 
+    std::string getSignature(){return this->signature;};
+
     void setVarTab(SymTab newVarTab){this->varTable = newVarTab;};
 };
 
@@ -42,7 +44,7 @@ public:
     FuncTab();
     FuncTab(std::string name);
 
-    void addFuncTable(std::string id, std::string retType, std::string scope);
+    void addFuncTable(std::string id, std::string retType, std::string signature);
     void addFuncTable(std::string id, FunctionEntry newEntry);
 
     void updateFuncTable(std::string id, SymTab newEntry);
@@ -67,8 +69,8 @@ FunctionEntry FuncTab::getFunction(std::string id){
     return x->second;
 }
 
-void FuncTab::addFuncTable(std::string id, std::string retType, std::string scope){
-    FunctionEntry temp = FunctionEntry(id, retType, scope);
+void FuncTab::addFuncTable(std::string id, std::string retType, std::string signature){
+    FunctionEntry temp = FunctionEntry(id, retType, signature);
     funcEntries.insert(make_pair(id, temp));
 }
 
