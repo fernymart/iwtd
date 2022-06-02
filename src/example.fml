@@ -3,10 +3,12 @@ program example;
 var in a, b, c[3], d, cont;
 var flt fl1, fl2, fl3;
 var in e;
+//var in e = 0;
 
 
 fun flt doh(in num) {
     var flt lala;
+    var in fl2;
     rt num;
 }
 
@@ -29,7 +31,7 @@ main () {
     c[0] = 1;
     c[1] = 5;
     c[3] = mayor(1, 2);
-    d = (a + b * (c / d + 1));
+    d = (a + b * (c / d + 1) * e);
 
     wr("Ingrese el valor de d");
     rd(d);

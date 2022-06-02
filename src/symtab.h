@@ -59,11 +59,14 @@ public:
     bool add(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address);
 
     Entry search(std::string id);
-
+    bool exists(std::string id);
 
     void setID(std::string id){ this->id = id;};
 
     std::string getID(){return this->id;};
+    int getIdAddress(std::string id);
+
+    std::string getIdDataType(std::string id);
     // int hashFuntion(std::string id);
 };
 
@@ -93,6 +96,20 @@ Entry SymTab::search(std::string id){
     return (table.at(id));
 }
 
+bool SymTab::exists(std::string id){
+    if(table.count(id) > 0){
+        return true;
+    }
+    return false;
+}
+
+int SymTab::getIdAddress(std::string id){
+    return table.at(id).getAddress();
+}
+
+std::string SymTab::getIdDataType(std::string id){
+    return table.at(id).getDataType();
+}
 // int SymTab::hashFuntion(std::string id){
 //     return 0;
 // }Entry

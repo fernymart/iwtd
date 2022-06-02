@@ -9,8 +9,36 @@
     #include "quadruples.h"
     #include "semanticCube.h"
 
+    /*
+        TODO:
+            - actualizar correctamente las direcciones virtuales de las vars
+            - verificar que existan las variables
+            - sacar la direccion dependiendo del scope
+    */
+
+    /*
+        Definir las direcciones bases para cada tipo de dato en cada scope
+    */
+
+    #define BASE_GLOBAL_IN 5000 // 5000 - 5999
+    #define BASE_GLOBAL_FLT 6000 // 6000 - 6999
+    #define BASE_GLOBAL_CHAR 7000 // 7000 - 7999
+
+    #define BASE_LOCAL_IN 8000 // 8000 - 9999
+    #define BASE_LOCAL_FLT 10000 // 10000 - 11999
+    #define BASE_LOCAL_CHAR 12000 //12000 - 12999
+
+    #define BASE_CTE 13000
+
+    #define BASE_TEMP_IN 14000
+    #define BASE_TEMP_FLT 15000
+    #define BASE_TEMP_BIN 16000
 
     #define YYERROR_VERBOSE 1
+
+    bool checkExists(std::string id);
+    int getAddress(std::string id);
+    std::string getDataType(std::string id);
 
     struct opTipos{
         std::string idT;
@@ -24,7 +52,7 @@
     extern int yyparse();
     extern FILE *yyin;
 
-
+    int contQuints = 0;
 
     std::string currentType;
 
@@ -95,7 +123,7 @@
     std::string currSignature = "";
 
 //     std::stack<std::string> pOper;
-//     std::stack<opTipos> pilaO;
+    std::stack<opTipos> pilaO;
     std::stack<int> pSaltos;
     std::vector<quintuple> quintuplesVect;
     /*
@@ -123,6 +151,7 @@
     struct idObj{
         char* id;
         char* tipo;
+        int dir;
     } expRes;
 //     FunctionEntry funcScope;
 }
@@ -204,9 +233,20 @@ LP RP LCB ESTATUTOS RCB {
 VARIABLES: VAR TIPO_SIMPLE ID{
     currentType = $2;
 //     std::cout << $2 << '\n';
-
+    if(currScope->exists($3)){
+        yyerror("Variable already declared.");
+    }
     currScope->add($3, "var", currentType, "global", yylineno, currAdd++);
-} VAR_ARR VAR_MULTIPLE SMCLN
+
+} VAR_ARR VAR_MULTIPLE SMCLN {
+    if(currentType == "in"){
+        addressIntCurr = currAdd;
+    }else if(currentType == "flt"){
+        addressFltCurr = currAdd;
+    }else{
+        addressCharCurr = currAdd;
+    }
+}
 | VAR ID ID VAR_ARR VAR_MULTIPLE SMCLN;
 
 VAR_ARR: LSB CTE_INT RSB VAR_MAT
@@ -287,7 +327,9 @@ RT: RETURN M_EXP {
     }
 };
 
-ASIGNA: VARIABLE ASGN M_EXP {std::cout << "=" << " " << $3.id << " " << $1.id << '\n';};
+ASIGNA: VARIABLE ASGN M_EXP {
+    std::cout << "=" << " " << $3.id << " " << $1.id << '\n';
+};
 
 LLAMADA: FUNC_ID LP PONER_PARAM RP;
 
@@ -329,8 +371,16 @@ INIT: VARIABLE ASGN M_EXP
 STEP: VARIABLE ASGN M_EXP;
 
 VARIABLE: ID VARIABLE_COMP {
-pilaO.push({$1, "try"});
-$$ = {$1, "PORMIENTRAS"};
+    if(!checkExists($1)){
+        std::string newStr = "Variable " + (std::string)($1) + " was not declared in this scope.";
+        yyerror(const_cast<char*>(newStr.c_str()));
+    }
+    int add = getAddress($1);
+    std::string type = getDataType($1);
+//     idObj tempObj =
+    pilaO.push({$1, "try"});
+//     $$ = {$1, "SGGS", 2332};
+    $$ = {$1, const_cast<char*>(type.c_str()), add};
 };
 
 VARIABLE_COMP: LSB G_EXP RSB VARIABLE_MAT
@@ -401,7 +451,9 @@ $$ = {"temp", "in"};}
 
 FACTOR: LP M_EXP RP {$$ = $2;}
 | VAR_CTE
-| SIGNO VARIABLE {$$ = $2;}
+| SIGNO VARIABLE {
+    $$ = $2;
+}
 | SIGNO LLAMADA {$$ = {"LLAM", "FUNC"};};
 
 VAR_CTE: CTE_INT {constantes.add($1, "const", "in", "global", yylineno, addressIntConst++); $$ = {$1, "in"};}
@@ -474,16 +526,33 @@ void yyerror(const char *s){
     exit(-1);
 }
 
-void createQuint(std::string command, std::string op1, std::string op2, std::string res, int graphRes){
+void createQuint(std::string command, int op1, int op2, int res, int graphRes){
     cout << command << " " << op1 << " " << op2 << " " << res << '\n';
 }
 
 bool checkExists(std::string id){
-
+    if(currScope->exists(id) || global.exists(id)){
+        return true;
+    }
+    return false;
 }
 
 int getAddress(std::string id){
+    if(currScope->exists(id)){
+        return currScope->getIdAddress(id);
+    }else if(global.exists(id)){
+        return global.getIdAddress(id);
+    }
+    return -1;
+}
 
+std::string getDataType(std::string id){
+    if(currScope->exists(id)){
+        return currScope->getIdDataType(id);
+    }else if(global.exists(id)){
+        return global.getIdDataType(id);
+    }
+    return "0";
 }
 
 int checkResultType(std::string operation, std::string lOper, std::string rOper){
