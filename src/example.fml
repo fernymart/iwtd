@@ -16,7 +16,7 @@ fun vo mayor(in num1, in num2) {
     var flt xd;
     if (num1 > num2) {
         wr(num1, " es mayor");
-    } elif (num2 > num1 && num1 > 0) {
+    } elif (num2 > num1 ) {
         wr(num2, " es mayor");
     } else {
         wr("Son iguales");
@@ -31,12 +31,12 @@ main () {
     c[0] = 1;
     c[1] = 5;
     c[3] = mayor(1, 2);
-    d = (a + b * (c / d + 1) * e);
+    d = (a + b * c);
 
     wr("Ingrese el valor de d");
     rd(d);
 
-    cont = -3.2 + 2;
+    cont = -3.2 + 2 + 2;
     wh(cont > 0) {
         cont = cont - 1;
     }

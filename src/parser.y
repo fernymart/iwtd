@@ -28,17 +28,20 @@
     #define BASE_LOCAL_FLT 10000 // 10000 - 11999
     #define BASE_LOCAL_CHAR 12000 //12000 - 12999
 
-    #define BASE_CTE 13000
+    #define BASE_CTE_IN 13000
+    #define BASE_CTE_FLT 13500
+    #define BASE_CTE_CHAR 14500
 
-    #define BASE_TEMP_IN 14000
-    #define BASE_TEMP_FLT 15000
-    #define BASE_TEMP_BIN 16000
+    #define BASE_TEMP_IN 15000
+    #define BASE_TEMP_FLT 16000
+    #define BASE_TEMP_BIN 17000
 
     #define YYERROR_VERBOSE 1
 
     bool checkExists(std::string id);
     int getAddress(std::string id);
     std::string getDataType(std::string id);
+    void createQuint(std::string command, int op1, int op2, int res, int graphRes);
 
     struct opTipos{
         std::string idT;
@@ -70,18 +73,18 @@
     int addressFltGlobal = 2000;
     int addressCharGlobal = 3000;
 
-    int addressIntTemp;
-    int addressFltTemp;
+    int addressIntTemp = BASE_TEMP_IN;
+    int addressFltTemp = BASE_TEMP_FLT;
     int addressCharTemp;
-    int addressBoolTemp;
+    int addressBoolTemp = BASE_TEMP_BIN;
 
     int addressIntCurr;
     int addressFltCurr;
     int addressCharCurr;
 
-    int addressIntConst = 13000;
-    int addressFltConst = 15000;
-    int addressCharConst = 17000;
+    int addressIntConst = BASE_CTE_IN;
+    int addressFltConst = BASE_CTE_FLT;
+    int addressCharConst = BASE_CTE_CHAR;
 
     int currAdd;
 
@@ -105,7 +108,7 @@
         {"==",8},
         {"&&",9},
         {"||",10},
-
+        {"=", 11}
     };
 
     /*
@@ -123,7 +126,7 @@
     std::string currSignature = "";
 
 //     std::stack<std::string> pOper;
-    std::stack<opTipos> pilaO;
+//     std::stack<opTipos> pilaO;
     std::stack<int> pSaltos;
     std::vector<quintuple> quintuplesVect;
     /*
@@ -197,19 +200,6 @@ PROGRAMA: PROGRAM ID SMCLN {
 
 } DEC_ATRIBUTOS DEC_METODOS DEC_MAIN;
 
-// DEC_CLASES: CLASE DEC_CLASES
-// | ;
-//
-// CLASE: CLASS ID CLASE_HEREDA {
-//     /*
-//     Punto neuralgico de las clases, se encarga de:
-//     -
-//     -
-//     */
-// } LCB DEC_ATRIBUTOS DEC_METODOS RCB;
-//
-// CLASE_HEREDA: INHERIT ID
-// | ;
 
 DEC_ATRIBUTOS: VARIABLES DEC_ATRIBUTOS
 | ;
@@ -246,8 +236,7 @@ VARIABLES: VAR TIPO_SIMPLE ID{
     }else{
         addressCharCurr = currAdd;
     }
-}
-| VAR ID ID VAR_ARR VAR_MULTIPLE SMCLN;
+};
 
 VAR_ARR: LSB CTE_INT RSB VAR_MAT
 | ;
@@ -289,7 +278,7 @@ FUNCION: FUN TIPO_SIMPLE ID LP PARAMETROS RP {
     tempScope = functions.getFunction($3).getVarTab();
     currScope = &tempScope;
 
-     currSignature = "";
+    currSignature = "";
 } LCB DEC_ATRIBUTOS ESTATUTOS RCB{
     functions.updateFuncTable($3, tempScope);
     currScope = &global;
@@ -353,7 +342,11 @@ ESCRIBE_MULTIPLE: COMMA M_EXP ESCRIBE_MULTIPLE
 | COMMA CTE_STR ESCRIBE_MULTIPLE
 | ;
 
-CONDICIONAL: IF LP M_EXP RP LCB ESTATUTOS RCB COND_ELIF COND_ELSE;
+CONDICIONAL: IF LP M_EXP RP {
+    createQuint("GOTOF", $3.dir, -1, -1, -1);
+    pSaltos.push_back(contQuints);
+    contQuints++;
+} LCB ESTATUTOS RCB COND_ELIF COND_ELSE;
 
 COND_ELIF: ELIF LP M_EXP RP LCB ESTATUTOS RCB COND_ELIF
 | ;
@@ -375,11 +368,12 @@ VARIABLE: ID VARIABLE_COMP {
         std::string newStr = "Variable " + (std::string)($1) + " was not declared in this scope.";
         yyerror(const_cast<char*>(newStr.c_str()));
     }
+    
     int add = getAddress($1);
     std::string type = getDataType($1);
-//     idObj tempObj =
-    pilaO.push({$1, "try"});
-//     $$ = {$1, "SGGS", 2332};
+
+//     pilaO.push({$1, "try"});
+    
     $$ = {$1, const_cast<char*>(type.c_str()), add};
 };
 
@@ -407,27 +401,72 @@ ARIT_MULT_DIV: MULT {$$ = "*";}
 | DIV {$$ = "/";};
 
 M_EXP: M_EXP andor M_EXP {
-std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
-$$ = {"temp", "in"};
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == -1){
+        yyerror("Logic expression incorrect due to conflicting data types. when and or");
+    }
+
+    std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
+    $$ = {"temp", "boo", addressBoolTemp++};
 }
-| S_EXP;
+| S_EXP {$$ = $1;};
 
 S_EXP: S_EXP COMPARATOR S_EXP {
-std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
-$$ = {"temp", "in"};
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == -1){
+        yyerror("Logic expression incorrect due to conflicting data types. when relop");
+    }
+    std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
+    $$ = {"temp", "boo", addressBoolTemp++};
 }
-| G_EXP;
+| G_EXP {$$ = $1;};
 
 G_EXP: G_EXP ARIT_SUM_RES G_EXP {
-std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
-$$ = {"temp", "in"};
+    int retAdd = 0;
+    std::string retType;
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == -1){
+//         cout << $1.id << " de tipo " << $1.tipo << " intentando " << $2 << " con " << $1.id << " de tipo " << $3.tipo << '\n';
+//         cout << checkCube(types[$1.tipo], types[$3.tipo], types[$2]);
+        yyerror("Logic expression incorrect due to conflicting data types. when add or sub");
+    }
+
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 0){
+        createQuint($2, $1.dir, $3.dir, addressIntTemp++, -1);
+        retAdd = addressIntTemp;
+        retType = "in";
+    }else if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 1){
+        createQuint($2, $1.dir, $3.dir, addressFltTemp++, -1);
+        retAdd = addressFltTemp;
+        retType = "flt";
+    }
+    contQuints++;
+//     std::cout << $2 << " " << $1.id << " " << $3.id << " " << retAdd << " " << -1 << '\n';
+    $$ = {"temp", const_cast<char*>(retType.c_str()), retAdd};
 }
-| TERMINO;
+| TERMINO {$$ = $1;};
 
 TERMINO: TERMINO ARIT_MULT_DIV TERMINO {
-std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
-$$ = {"temp", "in"};}
-| FACTOR;
+    int retAdd = 0;
+    std::string retType;
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == -1){
+        yyerror("Logic expression incorrect due to conflicting data types. when mult or div");
+    }
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 0){
+        retAdd = addressIntTemp;
+        createQuint($2, $1.dir, $3.dir, addressIntTemp++, -1);
+        retType = "in";
+//         $$ = {"tempmultdiv", "int", retAdd};
+    }else if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 1){
+        retAdd = addressFltTemp;
+        createQuint($2, $1.dir, $3.dir, addressFltTemp++, -1);
+        retType = "flt";
+//         $$ = {"tempmultdiv", "flt", retAdd};
+    }
+
+    contQuints++;
+//     std::cout << "esto debe de dar" << retType << "esto es lo que da" <<  const_cast<char*>(retType.c_str()) << "wet" << '\n';
+//     std::cout << $2 << " " << $1.id << " " << $3.id << " " << retAdd << " " << -1 << '\n';
+    $$ = {"tempmultdiv", const_cast<char*>(retType.c_str()), retAdd};
+}
+| FACTOR {$$ = $1;};
 
 // EXP: EXP_AND EXP_1;
 // EXP_1: OR EXP
@@ -456,9 +495,21 @@ FACTOR: LP M_EXP RP {$$ = $2;}
 }
 | SIGNO LLAMADA {$$ = {"LLAM", "FUNC"};};
 
-VAR_CTE: CTE_INT {constantes.add($1, "const", "in", "global", yylineno, addressIntConst++); $$ = {$1, "in"};}
-| CTE_FLT {constantes.add($1, "const", "flt", "global", yylineno, addressFltConst++); $$ = {$1, "flt"};}
-| CTE_CHR {constantes.add($1, "const", "ch", "global", yylineno, addressCharConst++); $$ = {$1, "ch"};};
+VAR_CTE: CTE_INT {
+    constantes.add($1, "const", "in", "global", yylineno, addressIntConst);
+    $$ = {$1, "in", addressIntConst};
+    addressIntConst++;
+}
+| CTE_FLT {
+    constantes.add($1, "const", "flt", "global", yylineno, addressFltConst);
+    $$ = {$1, "flt", addressFltConst};
+    addressFltConst++;
+}
+| CTE_CHR{
+    constantes.add($1, "const", "ch", "global", yylineno, addressCharConst);
+    $$ = {$1, "ch", addressCharConst};
+    addressCharConst++;
+};
 
 SIGNO: SUB
 | ;
@@ -510,13 +561,13 @@ int main(int, char** c){
         cout << it.second.getID() << " " << it.second.getDataType() << " " << it.second.getAddress() << '\n';
     }
 
-    std::cout << "Inicia pilaO\n";
+//     std::cout << "Inicia pilaO\n";
 
-    while(!pilaO.empty()){
-        std::cout << pilaO.top().idT << '\t' << pilaO.top().tipo << '\n';
-        pilaO.pop();
-
-    }
+//     while(!pilaO.empty()){
+//         std::cout << pilaO.top().idT << '\t' << pilaO.top().tipo << '\n';
+//         pilaO.pop();
+//
+//     }
     return 0;
 }
 
@@ -527,7 +578,8 @@ void yyerror(const char *s){
 }
 
 void createQuint(std::string command, int op1, int op2, int res, int graphRes){
-    cout << command << " " << op1 << " " << op2 << " " << res << '\n';
+    cout << command << " " << op1 << " " << op2 << " " << res << " " << graphRes << '\n';
+    quintuplesVect.push_back({command, op1, op2, res, graphRes});
 }
 
 bool checkExists(std::string id){
