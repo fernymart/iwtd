@@ -21,8 +21,10 @@ public:
     std::string getName(){return this->name;};
 
     std::string getSignature(){return this->signature;};
+    void setSignature(std::string signature){this->signature = signature;};
 
     void setVarTab(SymTab newVarTab){this->varTable = newVarTab;};
+
 };
 
 FunctionEntry::FunctionEntry(std::string name, std::string retType, std::string signature){
@@ -48,6 +50,8 @@ public:
     void addFuncTable(std::string id, FunctionEntry newEntry);
 
     void updateFuncTable(std::string id, SymTab newEntry);
+
+    void updateSignature(std::string funcId, std::string signature);
 
     FunctionEntry getFunction(std::string id);
     std::unordered_map<std::string, FunctionEntry> getFunctions(){return this->funcEntries;};
@@ -82,6 +86,13 @@ void FuncTab::updateFuncTable(std::string id, SymTab newEntry){
     std::unordered_map<std::string, FunctionEntry>::iterator it = this->funcEntries.find(id);
     if(it != this->funcEntries.end()){
         it->second.setVarTab(newEntry);
+    }
+}
+
+void FuncTab::updateSignature(std::string funcId, std::string signature){
+     std::unordered_map<std::string, FunctionEntry>::iterator it = this->funcEntries.find(funcId);
+    if(it != this->funcEntries.end()){
+        it->second.setSignature(signature);
     }
 }
 

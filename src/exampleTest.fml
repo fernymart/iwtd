@@ -1,0 +1,32 @@
+program example;
+
+var in a, b, c, d;
+
+fun flt multiplica(flt num1, flt num2){
+    rt num1*num2;
+}
+
+
+main () {
+    wr("Hello, World!", "Hola, Mundo!");
+    var flt x;
+    a = 5;
+    b = 10;
+    x = 3.5;
+    c = 10;
+    x = 3.5;
+
+    x = a * b;
+    if(x > a+b){
+        x = a +b;
+    }else{
+        x = 0+1;
+    }
+
+    wh(a < 15){
+        wr(a);
+        a = a+1;
+    }
+
+    a = a+15;
+}

@@ -45,7 +45,7 @@ whitespace (" " | [\t] | [\n] | [\r])
 [-]?[0-9]+              { yylval.id = (char *) strdup(yytext); return CTE_INT; }
 [-]?{digit}+\.{digit}+  { yylval.id = (char *) strdup(yytext); return CTE_FLT; }
 [']{letter}|{digit}[']  { yylval.id = (char *) strdup(yytext); return CTE_CHR; }
-["].*["]                { yylval.id = (char *) strdup(yytext); return CTE_STR; }
+\"(\\.|[^"\\])*\"               { yylval.id = (char *) strdup(yytext); return CTE_STR; }
 
 
 

@@ -9,6 +9,8 @@ var in e;
 fun flt doh(in num) {
     var flt lala;
     var in fl2;
+    var flt xdxd;
+    var in fl3;
     rt num;
 }
 
@@ -16,7 +18,7 @@ fun vo mayor(in num1, in num2) {
     var flt xd;
     if (num1 > num2) {
         wr(num1, " es mayor");
-    } elif (num2 > num1 ) {
+    } elif (num2 > num1) {
         wr(num2, " es mayor");
     } else {
         wr("Son iguales");
@@ -31,7 +33,7 @@ main () {
     c[0] = 1;
     c[1] = 5;
     c[3] = mayor(1, 2);
-    d = (a + b * c);
+    d = (a + b + (c/d + 1) * e);
 
     wr("Ingrese el valor de d");
     rd(d);

@@ -4,6 +4,7 @@
     #include <string>
     #include <unordered_map>
     #include <stack>
+    #include <fstream>
 
     #include "funcTab.h"
     #include "quadruples.h"
@@ -31,10 +32,11 @@
     #define BASE_CTE_IN 13000
     #define BASE_CTE_FLT 13500
     #define BASE_CTE_CHAR 14500
+    #define BASE_CTE_STR 15000 // 15000 - 16999
 
-    #define BASE_TEMP_IN 15000
-    #define BASE_TEMP_FLT 16000
-    #define BASE_TEMP_BIN 17000
+    #define BASE_TEMP_IN 17000
+    #define BASE_TEMP_FLT 18000
+    #define BASE_TEMP_BIN 19000
 
     #define YYERROR_VERBOSE 1
 
@@ -42,6 +44,9 @@
     int getAddress(std::string id);
     std::string getDataType(std::string id);
     void createQuint(std::string command, int op1, int op2, int res, int graphRes);
+    void updateCurrTypeAddress(int tipo, int currAdd);
+    void fill(int quintNum, int quintJumpTo);
+    bool constExists(std::string id);
 
     struct opTipos{
         std::string idT;
@@ -65,13 +70,13 @@
 
     SymTab tempScope;
 
-    int addressIntLocal = 5000;
-    int addressFltLocal = 7000;
-    int addressCharLocal = 9000;
+    int addressIntLocal = BASE_LOCAL_IN;
+    int addressFltLocal = BASE_LOCAL_FLT;
+    int addressCharLocal = BASE_LOCAL_CHAR;
 
-    int addressIntGlobal = 1000;
-    int addressFltGlobal = 2000;
-    int addressCharGlobal = 3000;
+    int addressIntGlobal = BASE_GLOBAL_IN;
+    int addressFltGlobal = BASE_GLOBAL_FLT;
+    int addressCharGlobal = BASE_GLOBAL_CHAR;
 
     int addressIntTemp = BASE_TEMP_IN;
     int addressFltTemp = BASE_TEMP_FLT;
@@ -85,6 +90,7 @@
     int addressIntConst = BASE_CTE_IN;
     int addressFltConst = BASE_CTE_FLT;
     int addressCharConst = BASE_CTE_CHAR;
+    int addressStrConst = BASE_CTE_STR;
 
     int currAdd;
 
@@ -170,13 +176,15 @@
 %token <id>ID
 %token DOT COMMA CLN SMCLN
 %token ADD SUB MULT DIV
-%token G_ET L_ET EQ NEQ GT LT ASGN
+%token <id> G_ET L_ET EQ NEQ GT LT ASGN
 %token LP RP LCB RCB LSB RSB
 %token OR AND
 // %token WS
 
-%left ADD SUB MULT DIV
-%right G_ET L_ET EQ NEQ GT LT ASGN
+%left ADD SUB
+%left MULT DIV
+%left G_ET L_ET EQ NEQ GT LT
+%right ASGN
 //
 %type<type> TIPO_SIMPLE;
 
@@ -249,44 +257,74 @@ VAR_MULTIPLE: COMMA ID {
 } VAR_ARR VAR_MULTIPLE
 | ;
 
-TIPO_SIMPLE: INT {currAdd = addressIntCurr;}
-|FLOAT {currAdd = addressFltCurr;}
+TIPO_SIMPLE: INT {
+    currAdd = addressIntCurr;
+}
+|FLOAT {
+    currAdd = addressFltCurr;
+}
 |STRING
-|CHAR {currAdd = addressCharCurr;};
+|CHAR {
+    currAdd = addressCharCurr;
+};
 
 DEC_METODOS: FUNCION DEC_METODOS
 | ;
 
-FUNCION: FUN TIPO_SIMPLE ID LP PARAMETROS RP {
+FUNCION: FUN TIPO_SIMPLE ID{
+    //Aqui creamos la funcion y actualizamos la base de memoria
+
     canReturn = true;
+    addressIntCurr = addressIntLocal;
+    addressFltCurr = addressFltLocal;
+    addressCharCurr = addressCharLocal;
+
     functions.addFuncTable($3, $2, currSignature);
     tempScope = functions.getFunction($3).getVarTab();
     currScope = &tempScope;
-    currSignature = "";
-    /*
 
-    */
+}LP PARAMETROS RP {
+
+    functions.updateSignature($3, currSignature);
+    currSignature = "";
 
 } LCB DEC_ATRIBUTOS ESTATUTOS RCB{
+
     functions.updateFuncTable($3, tempScope);
     currScope = &global;
     canReturn = false;
+
+    addressIntCurr = addressIntLocal;
+    addressFltCurr = addressFltLocal;
+    addressCharCurr = addressCharLocal;
+
 }
-| FUN VOID ID LP PARAMETROS RP {
-    functions.addFuncTable($3, "vo", currSignature);
+| FUN VOID ID{
 
-    tempScope = functions.getFunction($3).getVarTab();
-    currScope = &tempScope;
+        functions.addFuncTable($3, "vo", currSignature);
+        tempScope = functions.getFunction($3).getVarTab();
+        currScope = &tempScope;
 
+}LP PARAMETROS RP {
+
+    functions.updateSignature($3, currSignature);
     currSignature = "";
+
 } LCB DEC_ATRIBUTOS ESTATUTOS RCB{
+
     functions.updateFuncTable($3, tempScope);
     currScope = &global;
+
+    addressIntCurr = addressIntLocal;
+    addressFltCurr = addressFltLocal;
+    addressCharCurr = addressCharLocal;
 };
 
 PARAMETROS: TIPO_SIMPLE ID {
     currScope->add($2, "parametro", $1, "funcion", yylineno, currAdd++);
+    cout << currScope->getID() << " " << currAdd << '\n';
     currSignature+=to_string(types[$1]);
+    updateCurrTypeAddress(types[$1], currAdd);
 //     std::cout << "CURR SIGNATURE " << currSignature << " PARAM TYPE " << types[$1] << '\n';
 } PARAMETROS_MULTIPLE
 | ;
@@ -317,44 +355,199 @@ RT: RETURN M_EXP {
 };
 
 ASIGNA: VARIABLE ASGN M_EXP {
-    std::cout << "=" << " " << $3.id << " " << $1.id << '\n';
+    if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == -1){
+        yyerror("cannot assign value to variable due to type-mismatch");
+    }
+    createQuint($2, $3.dir, -1, $1.dir, -1);
+    contQuints++;
+//     $$ = {"temp", "boo", addressBoolTemp++};
+
+//     std::cout << "=" << " " << $3.id << " " << $1.id << '\n';
 };
 
 LLAMADA: FUNC_ID LP PONER_PARAM RP;
 
-FUNC_ID: ID
-| ID DOT ID;
+FUNC_ID: ID;
 
 PONER_PARAM: M_EXP {
 //     cout<<"parametro 1 encontrado " ;
-} LLAMADA_MULTIPLE
+} PONER_PARAM
 | ;
 
-LLAMADA_MULTIPLE: COMMA M_EXP LLAMADA_MULTIPLE
-| ;
+// LLAMADA_MULTIPLE: COMMA M_EXP LLAMADA_MULTIPLE
+// | ;
 
 LEE: READ LP VARIABLE RP;
 
-ESCRIBE: WRITE LP M_EXP ESCRIBE_MULTIPLE RP
-| WRITE LP CTE_STR ESCRIBE_MULTIPLE RP;
+ESCRIBE: WRITE LP M_EXP {
+     createQuint("WRITE", $3.dir, -1, -1, -1);
+} ESCRIBE_MULTIPLE RP
+| WRITE LP CTE_STR{
 
-ESCRIBE_MULTIPLE: COMMA M_EXP ESCRIBE_MULTIPLE
-| COMMA CTE_STR ESCRIBE_MULTIPLE
+    constantes.add($3, "const", "str", "global", yylineno, addressStrConst);
+    createQuint("WRITE", addressStrConst, -1, -1, -1);
+    addressStrConst++;
+//     if(){
+//
+//     }
+} ESCRIBE_MULTIPLE RP;
+
+ESCRIBE_MULTIPLE: COMMA M_EXP {
+    createQuint("WRITE", $2.dir, -1, -1, -1);
+} ESCRIBE_MULTIPLE
+| COMMA CTE_STR{
+    constantes.add($2, "const", "str", "global", yylineno, addressStrConst);
+    createQuint("WRITE", addressStrConst, -1, -1, -1);
+    addressStrConst++;
+}ESCRIBE_MULTIPLE
 | ;
 
 CONDICIONAL: IF LP M_EXP RP {
+    if(types[$3.tipo] != 3){
+        yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
+    }
     createQuint("GOTOF", $3.dir, -1, -1, -1);
-    pSaltos.push_back(contQuints);
     contQuints++;
-} LCB ESTATUTOS RCB COND_ELIF COND_ELSE;
+    pSaltos.push(contQuints-1);
 
-COND_ELIF: ELIF LP M_EXP RP LCB ESTATUTOS RCB COND_ELIF
+} LCB ESTATUTOS RCB COND_ELSE{
+    int fal = pSaltos.top();
+    pSaltos.pop();
+    fill(fal, contQuints);
+};
+
+// CONDICIONAL: IF LP M_EXP RP {
+//     if(types[$3.tipo] != 3){
+//         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
+//     }
+//     createQuint("GOTOF", $3.dir, -1, -1, -1);
+//     contQuints++;
+//     pSaltos.push(contQuints-1);
+//
+// } LCB ESTATUTOS RCB{
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//     fill(fal, contQuints);
+// } COND_1{
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//     fill(fal, contQuints);
+// };
+
+// COND_1: ELIF{
+//     createQuint("GOTO", -1, -1, -1, -1);
+//     contQuints++;
+// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//     fill(fal, contQuints);
+// //     pSaltos.pop();
+//     pSaltos.push(contQuints - 1);
+// //     contQuints++;
+// } LP M_EXP RP{
+// //     cout << $3 <<  '\n';
+//     if(types[$4.tipo] != 3){
+//         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
+//     }
+//     createQuint("GOTOF", $4.dir, -1, -1, -1);
+//     contQuints++;
+//     pSaltos.push(contQuints - 1);
+//
+// } LCB ESTATUTOS RCB {
+// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+// //     pSaltos.pop();
+// //     createQuint("GOTO", -1, -1, -1, -1);
+// //     contQuints++;
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//     fill(fal, contQuints);
+//
+// }
+// | ELSE{
+//     createQuint("GOTO", -1, -1, -1, -1);
+//     contQuints++;
+// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//
+//     fill(fal, contQuints);
+//     pSaltos.push(contQuints-1);
+// }LCB ESTATUTOS RCB{
+// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+// //     pSaltos.pop();
+// //     int fal = pSaltos.top();
+// //     pSaltos.pop();
+// //     fill(fal, contQuints);
+// }
+// | ;
+
+// COND_ELIF: ELIF{
+//     createQuint("GOTO", -1, -1, -1, -1);
+//     contQuints++;
+// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//     fill(fal, contQuints);
+// //     pSaltos.pop();
+//     pSaltos.push(contQuints - 1);
+// //     contQuints++;
+// } LP M_EXP RP{
+// //     cout << $3 <<  '\n';
+//     if(types[$4.tipo] != 3){
+//         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
+//     }
+//     createQuint("GOTOF", $4.dir, -1, -1, -1);
+//     contQuints++;
+//     pSaltos.push(contQuints - 1);
+//
+// } LCB ESTATUTOS RCB {
+// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+// //     pSaltos.pop();
+// //     createQuint("GOTO", -1, -1, -1, -1);
+// //     contQuints++;
+//     int fal = pSaltos.top();
+//     pSaltos.pop();
+//     fill(fal, contQuints);
+//
+// }COND_ELIF{
+// //     int fal = pSaltos.top();
+// //     pSaltos.pop();
+// //     fill(fal, contQuints+1);
+// }
+// | ;
+
+COND_ELSE: ELSE{
+    createQuint("GOTO", -1, -1, -1, -1);
+    contQuints++;
+//     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+    int fal = pSaltos.top();
+    pSaltos.pop();
+
+    fill(fal, contQuints);
+    pSaltos.push(contQuints-1);
+}LCB ESTATUTOS RCB
 | ;
 
-COND_ELSE: ELSE LCB ESTATUTOS RCB
-| ;
+CICLO_WH: WHILE {
+    pSaltos.push(contQuints);
+}LP M_EXP RP {
+     if(types[$4.tipo] != 3){
+        yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
+    }
+    createQuint("GOTOF", $4.dir, -1, -1, -1);
+    contQuints++;
+    pSaltos.push(contQuints-1);
+}LCB ESTATUTOS RCB{
+    int end = pSaltos.top();
+    pSaltos.pop();
 
-CICLO_WH: WHILE LP M_EXP RP LCB ESTATUTOS RCB ;
+    int ret = pSaltos.top();
+    pSaltos.pop();
+    createQuint("GOTO", -1, -1, ret, -1);
+    contQuints++;
+
+     fill(end, contQuints);
+};
 
 CICLO_FOR: FOR LP INIT SMCLN M_EXP SMCLN STEP RP LCB ESTATUTOS RCB ;
 
@@ -373,7 +566,7 @@ VARIABLE: ID VARIABLE_COMP {
     std::string type = getDataType($1);
 
 //     pilaO.push({$1, "try"});
-    
+
     $$ = {$1, const_cast<char*>(type.c_str()), add};
 };
 
@@ -405,8 +598,10 @@ M_EXP: M_EXP andor M_EXP {
         yyerror("Logic expression incorrect due to conflicting data types. when and or");
     }
 
-    std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
+//     std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
+    createQuint($2, $1.dir, $3.dir, addressBoolTemp, -1);
     $$ = {"temp", "boo", addressBoolTemp++};
+    contQuints++;
 }
 | S_EXP {$$ = $1;};
 
@@ -414,7 +609,9 @@ S_EXP: S_EXP COMPARATOR S_EXP {
     if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == -1){
         yyerror("Logic expression incorrect due to conflicting data types. when relop");
     }
-    std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
+//     std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
+    createQuint($2, $1.dir, $3.dir, addressBoolTemp, -1);
+    contQuints++;
     $$ = {"temp", "boo", addressBoolTemp++};
 }
 | G_EXP {$$ = $1;};
@@ -429,12 +626,14 @@ G_EXP: G_EXP ARIT_SUM_RES G_EXP {
     }
 
     if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 0){
-        createQuint($2, $1.dir, $3.dir, addressIntTemp++, -1);
         retAdd = addressIntTemp;
+        createQuint($2, $1.dir, $3.dir, addressIntTemp++, -1);
+
         retType = "in";
     }else if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 1){
-        createQuint($2, $1.dir, $3.dir, addressFltTemp++, -1);
         retAdd = addressFltTemp;
+        createQuint($2, $1.dir, $3.dir, addressFltTemp++, -1);
+
         retType = "flt";
     }
     contQuints++;
@@ -450,13 +649,17 @@ TERMINO: TERMINO ARIT_MULT_DIV TERMINO {
         yyerror("Logic expression incorrect due to conflicting data types. when mult or div");
     }
     if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 0){
+        std::cout << "ADDRESS DEL FLOAT TEMP ACTUAL " << addressFltTemp << " ids: " << $1.id << " " << $3.id << '\n';
         retAdd = addressIntTemp;
         createQuint($2, $1.dir, $3.dir, addressIntTemp++, -1);
+        std::cout << "ADDRESS DEL FLOAT TEMP NUEVA " << addressFltTemp << " ids: " << $1.id << " " << $3.id << '\n';
         retType = "in";
 //         $$ = {"tempmultdiv", "int", retAdd};
     }else if(checkCube(types[$2], types[$1.tipo], types[$3.tipo]) == 1){
+        std::cout << "ADDRESS DEL FLOAT TEMP ACTUAL" << addressFltTemp << '\n';
         retAdd = addressFltTemp;
         createQuint($2, $1.dir, $3.dir, addressFltTemp++, -1);
+        std::cout << "ADDRESS DEL FLOAT TEMP NUEVA" << addressFltTemp << '\n';
         retType = "flt";
 //         $$ = {"tempmultdiv", "flt", retAdd};
     }
@@ -488,17 +691,23 @@ TERMINO: TERMINO ARIT_MULT_DIV TERMINO {
 // TERMINO_1: ARIT_MULT_DIV FACTOR //TERMINO_1
 // | ;
 
-FACTOR: LP M_EXP RP {$$ = $2;}
+FACTOR: LP M_EXP RP {
+    $$ = $2;
+}
 | VAR_CTE
 | SIGNO VARIABLE {
     $$ = $2;
 }
-| SIGNO LLAMADA {$$ = {"LLAM", "FUNC"};};
+| SIGNO LLAMADA {
+    $$ = {"LLAM", "FUNC"};
+};
 
 VAR_CTE: CTE_INT {
-    constantes.add($1, "const", "in", "global", yylineno, addressIntConst);
-    $$ = {$1, "in", addressIntConst};
-    addressIntConst++;
+    if(!constExists($1)){
+        constantes.add($1, "const", "in", "global", yylineno, addressIntConst);
+        addressIntConst++;
+    }
+    $$ = {$1, "in", constantes.getIdAddress($1)};
 }
 | CTE_FLT {
     constantes.add($1, "const", "flt", "global", yylineno, addressFltConst);
@@ -535,8 +744,8 @@ int main(int, char** c){
 
     cout << types["i"] << '\t' << types["i"] << '\t' << types["+"] << '\n';
 
-    std::cout << "SHEEESH " << checkCube(types["+"], types["i"], types["i"]) << '\n';
-    std::cout << "SHEEESH " << checkCube(2, 0, 0) << '\n';
+//     std::cout << "SHEEESH " << checkCube(types["+"], types["i"], types["i"]) << '\n';
+//     std::cout << "SHEEESH " << checkCube(2, 0, 0) << '\n';
 
     std::unordered_map<std::string, Entry> table = global.getTable();
     for(auto& it: table){
@@ -562,12 +771,34 @@ int main(int, char** c){
     }
 
 //     std::cout << "Inicia pilaO\n";
-
+    int quadNum = 0;
+    for(auto& it:quintuplesVect){
+        cout << "QUAD NUMBER: " << quadNum << '\n';
+        cout << it.opCode << " " << it.dirOp1 << " " << it.dirOp2 << " " << it.result << " " << it.graphicalReserve << '\n';
+        quadNum++;
+    }
 //     while(!pilaO.empty()){
 //         std::cout << pilaO.top().idT << '\t' << pilaO.top().tipo << '\n';
 //         pilaO.pop();
 //
 //     }
+
+    ofstream outfile("OVEJOTA.ovejota");
+    for(auto& it: tableConst){
+        outfile << it.second.getAddress() << " " << it.second.getID() << " " << it.second.getDataType()  << '\n';
+    }
+
+    outfile << "~~~~~~~~~~\n";
+
+    outfile << "~~~~~~~~~~\n";
+//     int quadNum = 0;
+    for(auto& it:quintuplesVect){
+//         cout << "QUAD NUMBER: " << quadNum << '\n';
+        outfile << it.opCode << " " << it.dirOp1 << " " << it.dirOp2 << " " << it.result << " " << it.graphicalReserve << '\n';
+//         quadNum++;
+    }
+    outfile.close();
+
     return 0;
 }
 
@@ -578,7 +809,7 @@ void yyerror(const char *s){
 }
 
 void createQuint(std::string command, int op1, int op2, int res, int graphRes){
-    cout << command << " " << op1 << " " << op2 << " " << res << " " << graphRes << '\n';
+//     cout << command << " " << op1 << " " << op2 << " " << res << " " << graphRes << '\n';
     quintuplesVect.push_back({command, op1, op2, res, graphRes});
 }
 
@@ -610,3 +841,28 @@ std::string getDataType(std::string id){
 int checkResultType(std::string operation, std::string lOper, std::string rOper){
     return checkCube(types[lOper], types[rOper], types[operation]);
 }
+
+void fill(int quintNum, int quintJumpTo){
+    quintuplesVect[quintNum].result = quintJumpTo;
+}
+
+void updateCurrTypeAddress(int tipo, int currAdd){
+    switch(tipo){
+        case 0:
+            addressIntCurr = currAdd;
+        break;
+
+        case 1:
+            addressFltCurr = currAdd;
+        break;
+
+        case 2:
+            addressCharConst = currAdd;
+        break;
+    }
+}
+
+bool constExists(std::string id){
+    return constantes.exists(id);
+}
+
