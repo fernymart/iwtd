@@ -4,6 +4,11 @@
 #include <vector>
 #include <unordered_map>
 
+struct dimension{
+    int size;
+    dimension* next;
+};
+
 class Entry{
 private:
     std::string id;
@@ -12,6 +17,7 @@ private:
     std::string scope;
     int lineNum;
     int address;
+    dimension* dims;
 public:
     Entry(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address);
 
@@ -32,6 +38,8 @@ public:
 
     int getAddress(){return this->address;};
     void setAddress(int address){this->address = address;};
+
+//     void addDim
 };
 
 Entry::Entry(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address){

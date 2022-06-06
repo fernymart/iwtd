@@ -29,14 +29,16 @@
     #define BASE_LOCAL_FLT 10000 // 10000 - 11999
     #define BASE_LOCAL_CHAR 12000 //12000 - 12999
 
-    #define BASE_CTE_IN 13000
-    #define BASE_CTE_FLT 13500
-    #define BASE_CTE_CHAR 14500
-    #define BASE_CTE_STR 15000 // 15000 - 16999
+    #define BASE_TEMP_IN 13000 // 13000 - 14999
+    #define BASE_TEMP_FLT 15000 // 15000 - 16999
+    #define BASE_TEMP_BIN 17000 // 17000 - 18999
 
-    #define BASE_TEMP_IN 17000
-    #define BASE_TEMP_FLT 18000
-    #define BASE_TEMP_BIN 19000
+    #define BASE_CTE_IN 19000 // 19000 - 20999
+    #define BASE_CTE_FLT 21000 // 21000 - 23499
+    #define BASE_CTE_CHAR 23500 // 23500 - 23999
+    #define BASE_CTE_STR 24000 // 24000 - 25999
+
+
 
     #define YYERROR_VERBOSE 1
 
@@ -47,6 +49,8 @@
     void updateCurrTypeAddress(int tipo, int currAdd);
     void fill(int quintNum, int quintJumpTo);
     bool constExists(std::string id);
+    std::string getTypeFromNum(int tipo);
+    bool checkCurrParam(std::string currCallSign, int currCallPos,  std::string currParamSign);
 
     struct opTipos{
         std::string idT;
@@ -80,7 +84,6 @@
 
     int addressIntTemp = BASE_TEMP_IN;
     int addressFltTemp = BASE_TEMP_FLT;
-    int addressCharTemp;
     int addressBoolTemp = BASE_TEMP_BIN;
 
     int addressIntCurr;
@@ -94,9 +97,15 @@
 
     int currAdd;
 
+    std::string currCallSign;
+    std::string currParamSign;
+    int currCallPos;
+    int currCallSize;
+
     bool isGraphical = false;
 
     bool canReturn = false;
+    bool hasReturn = false;
 
     std::unordered_map<std::string, int> types = {
         {"in", 0},
@@ -192,8 +201,11 @@
 
 %type<id> ARIT_MULT_DIV ARIT_SUM_RES COMPARATOR andor
 
+%type<id> FUNC_ID
 %%
 PROGRAMA: PROGRAM ID SMCLN {
+    createQuint("GOTOMAIN", -1, -1, -1, -1);
+    contQuints++;
     functions = FuncTab($2);
     global = SymTab("global", "global var table");
     currScope = &global;
@@ -206,7 +218,7 @@ PROGRAMA: PROGRAM ID SMCLN {
     addressFltCurr = addressFltGlobal;
     addressCharCurr = addressCharGlobal;
 
-} DEC_ATRIBUTOS DEC_METODOS DEC_MAIN;
+} DEC_ATRIBUTOS DEC_METODOS DEC_MAIN {createQuint("END_FILE", -1, -1, -1, -1);};
 
 
 DEC_ATRIBUTOS: VARIABLES DEC_ATRIBUTOS
@@ -218,7 +230,7 @@ DEC_MAIN: MAIN {
     -
     -
     */
-    functions.addFuncTable("main", "vo", "");
+    functions.addFuncTable("main", "vo", "", contQuints);
 
     tempScope = functions.getFunction("main").getVarTab();
     currScope = &tempScope;
@@ -273,13 +285,14 @@ DEC_METODOS: FUNCION DEC_METODOS
 
 FUNCION: FUN TIPO_SIMPLE ID{
     //Aqui creamos la funcion y actualizamos la base de memoria
+    global.add($3, "varFuncRet", $2, "global", yylineno, currAdd++);
 
     canReturn = true;
     addressIntCurr = addressIntLocal;
     addressFltCurr = addressFltLocal;
     addressCharCurr = addressCharLocal;
 
-    functions.addFuncTable($3, $2, currSignature);
+    functions.addFuncTable($3, $2, currSignature, contQuints);
     tempScope = functions.getFunction($3).getVarTab();
     currScope = &tempScope;
 
@@ -289,6 +302,12 @@ FUNCION: FUN TIPO_SIMPLE ID{
     currSignature = "";
 
 } LCB DEC_ATRIBUTOS ESTATUTOS RCB{
+
+    if(!hasReturn){
+        yyerror("Non void function must have a return statement");
+    }
+
+    hasReturn = false;
 
     functions.updateFuncTable($3, tempScope);
     currScope = &global;
@@ -301,7 +320,7 @@ FUNCION: FUN TIPO_SIMPLE ID{
 }
 | FUN VOID ID{
 
-        functions.addFuncTable($3, "vo", currSignature);
+        functions.addFuncTable($3, "vo", currSignature, contQuints);
         tempScope = functions.getFunction($3).getVarTab();
         currScope = &tempScope;
 
@@ -342,16 +361,16 @@ ESTATUTO: VARIABLES
 | ESCRIBE SMCLN
 | CONDICIONAL
 | CICLO_WH
-| CICLO_FOR
 | RT SMCLN;
 
 RT: RETURN M_EXP {
     if(!canReturn){
         yyerror("Cannot use a return in a void or main function");
 //         throw std::invalid_argument("Incorrect file type, make sure the file extension is .fml");
-    } else{
-
     }
+    createQuint("RET", -1, -1, $2.dir, -1);
+    contQuints++;
+    hasReturn = true;
 };
 
 ASIGNA: VARIABLE ASGN M_EXP {
@@ -365,28 +384,55 @@ ASIGNA: VARIABLE ASGN M_EXP {
 //     std::cout << "=" << " " << $3.id << " " << $1.id << '\n';
 };
 
-LLAMADA: FUNC_ID LP PONER_PARAM RP;
+LLAMADA: FUNC_ID {
+    currCallSign = functions.getIdSignature($1);
+    currCallSize = currCallSign.length();
+    currCallPos = 0;
+} LP PONER_PARAM RP{
 
-FUNC_ID: ID;
+};
+
+FUNC_ID: ID {$$ = $1;};
 
 PONER_PARAM: M_EXP {
-//     cout<<"parametro 1 encontrado " ;
-} PONER_PARAM
+    if(checkCurrParam(currCallSign, currCallPos, $1.tipo)){
+        createQuint("PARAM", $1.dir, -1, -1, -1);
+        contQuints++;
+        currCallPos++;
+    }
+} LLAMADA_MULTIPLE
 | ;
 
-// LLAMADA_MULTIPLE: COMMA M_EXP LLAMADA_MULTIPLE
-// | ;
+LLAMADA_MULTIPLE: COMMA M_EXP{
+     if(checkCurrParam(currCallSign, currCallPos, $2.tipo)){
+        createQuint("PARAM", $2.dir, -1, -1, -1);
+        contQuints++;
+        currCallPos++;
+    }
+} LLAMADA_MULTIPLE
+| ;
 
-LEE: READ LP VARIABLE RP;
+LEE: READ LP VARIABLE RP {
+    createQuint("READ", $3.dir, -1, -1, -1);
+    contQuints++;
+};
 
 ESCRIBE: WRITE LP M_EXP {
      createQuint("WRITE", $3.dir, -1, -1, -1);
+     contQuints++;
 } ESCRIBE_MULTIPLE RP
 | WRITE LP CTE_STR{
+    int add;
+    if(!constantes.exists($3)){
+        constantes.add($3, "const", "str", "global", yylineno, addressStrConst);
+        addressStrConst++;
+        add = addressStrConst-1;
+    }else{
+        add = constantes.getIdAddress($3);
+    }
+    createQuint("WRITE", add, -1, -1, -1);
+    contQuints++;
 
-    constantes.add($3, "const", "str", "global", yylineno, addressStrConst);
-    createQuint("WRITE", addressStrConst, -1, -1, -1);
-    addressStrConst++;
 //     if(){
 //
 //     }
@@ -394,11 +440,19 @@ ESCRIBE: WRITE LP M_EXP {
 
 ESCRIBE_MULTIPLE: COMMA M_EXP {
     createQuint("WRITE", $2.dir, -1, -1, -1);
+    contQuints++;
 } ESCRIBE_MULTIPLE
 | COMMA CTE_STR{
-    constantes.add($2, "const", "str", "global", yylineno, addressStrConst);
-    createQuint("WRITE", addressStrConst, -1, -1, -1);
-    addressStrConst++;
+    int add;
+    if(!constantes.exists($2)){
+        constantes.add($2, "const", "str", "global", yylineno, addressStrConst);
+        addressStrConst++;
+        add = addressStrConst-1;
+    }else{
+        add = constantes.getIdAddress($2);
+    }
+    createQuint("WRITE", add, -1, -1, -1);
+    contQuints++;
 }ESCRIBE_MULTIPLE
 | ;
 
@@ -410,11 +464,47 @@ CONDICIONAL: IF LP M_EXP RP {
     contQuints++;
     pSaltos.push(contQuints-1);
 
-} LCB ESTATUTOS RCB COND_ELSE{
+} LCB ESTATUTOS RCB COND_ELIF_ELSE{
     int fal = pSaltos.top();
     pSaltos.pop();
     fill(fal, contQuints);
 };
+
+COND_ELIF_ELSE: ELIF{
+    createQuint("GOTO", -1, -1, -1, -1);
+    contQuints++;
+//     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+    int fal = pSaltos.top();
+    pSaltos.pop();
+
+    fill(fal, contQuints);
+    pSaltos.push(contQuints-1);
+//     contQuints++;
+} LP M_EXP RP{
+//     cout << $3 <<  '\n';
+    if(types[$4.tipo] != 3){
+        yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
+    }
+    createQuint("GOTOF", $4.dir, -1, -1, -1);
+    contQuints++;
+    pSaltos.push(contQuints-1);
+
+} LCB ESTATUTOS RCB COND_ELIF_ELSE{
+    int fal = pSaltos.top();
+    pSaltos.pop();
+    fill(fal, contQuints);
+}
+|  ELSE{
+    createQuint("GOTO", -1, -1, -1, -1);
+    contQuints++;
+//     quintuplesVect[pSaltos.top()].result = contQuints + 1;
+    int fal = pSaltos.top();
+    pSaltos.pop();
+
+    fill(fal, contQuints);
+    pSaltos.push(contQuints-1);
+}LCB ESTATUTOS RCB
+|;
 
 // CONDICIONAL: IF LP M_EXP RP {
 //     if(types[$3.tipo] != 3){
@@ -487,27 +577,27 @@ CONDICIONAL: IF LP M_EXP RP {
 // //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
 //     int fal = pSaltos.top();
 //     pSaltos.pop();
+//
 //     fill(fal, contQuints);
-// //     pSaltos.pop();
-//     pSaltos.push(contQuints - 1);
+//     pSaltos.push(contQuints-1);
 // //     contQuints++;
 // } LP M_EXP RP{
 // //     cout << $3 <<  '\n';
-//     if(types[$4.tipo] != 3){
+//     if(types[$3.tipo] != 3){
 //         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
 //     }
-//     createQuint("GOTOF", $4.dir, -1, -1, -1);
+//     createQuint("GOTOF", $3.dir, -1, -1, -1);
 //     contQuints++;
-//     pSaltos.push(contQuints - 1);
+//     pSaltos.push(contQuints-1);
 //
 // } LCB ESTATUTOS RCB {
 // //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
 // //     pSaltos.pop();
 // //     createQuint("GOTO", -1, -1, -1, -1);
 // //     contQuints++;
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//     fill(fal, contQuints);
+// //     int fal = pSaltos.top();
+// //     pSaltos.pop();
+// //     fill(fal, contQuints);
 //
 // }COND_ELIF{
 // //     int fal = pSaltos.top();
@@ -519,7 +609,6 @@ CONDICIONAL: IF LP M_EXP RP {
 COND_ELSE: ELSE{
     createQuint("GOTO", -1, -1, -1, -1);
     contQuints++;
-//     quintuplesVect[pSaltos.top()].result = contQuints + 1;
     int fal = pSaltos.top();
     pSaltos.pop();
 
@@ -548,13 +637,6 @@ CICLO_WH: WHILE {
 
      fill(end, contQuints);
 };
-
-CICLO_FOR: FOR LP INIT SMCLN M_EXP SMCLN STEP RP LCB ESTATUTOS RCB ;
-
-INIT: VARIABLE ASGN M_EXP
-| VARIABLE ;
-
-STEP: VARIABLE ASGN M_EXP;
 
 VARIABLE: ID VARIABLE_COMP {
     if(!checkExists($1)){
@@ -785,7 +867,11 @@ int main(int, char** c){
 
     ofstream outfile("OVEJOTA.ovejota");
     for(auto& it: tableConst){
-        outfile << it.second.getAddress() << " " << it.second.getID() << " " << it.second.getDataType()  << '\n';
+        if(it.second.getDataType() == "str"){
+            outfile << it.second.getAddress() << "\0" << it.second.getID() << "\0" << it.second.getDataType()  << '\n';
+        }else{
+            outfile << it.second.getAddress() << "\"" << it.second.getID() << "\"" << it.second.getDataType()  << '\n';
+        }
     }
 
     outfile << "~~~~~~~~~~\n";
@@ -858,6 +944,38 @@ void updateCurrTypeAddress(int tipo, int currAdd){
 
         case 2:
             addressCharConst = currAdd;
+        break;
+    }
+}
+
+bool checkCurrParam(std::string currCallSign, int currCallPos, std::string currParamSign){
+    if(currCallPos >= currCallSign.length()){
+        yyerror("unexpected parameter amout for function call");
+    }
+    if(currParamSign != getTypeFromNum(currCallSign[currCallPos] - '0')){
+        std::string errorMsg = "Found parameter of type " + currParamSign + " expected type " + getTypeFromNum(currCallSign[currCallPos] - '0');
+        yyerror(const_cast<char*>(errorMsg.c_str()));
+    }
+
+    return true;
+}
+
+std::string getTypeFromNum(int tipo){
+    switch(tipo){
+        case 0:
+            return "in";
+        break;
+
+        case 1:
+            return "flt";
+        break;
+
+        case 2:
+            return "char";
+        break;
+
+        default:
+            return "";
         break;
     }
 }

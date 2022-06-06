@@ -1,5 +1,6 @@
 program example;
-
+var in i;
 main () {
-    wr("Hello, World! \n");
+    i = 2/0;
+    wr("Hello, World!", 2);
 }

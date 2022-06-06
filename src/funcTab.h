@@ -11,9 +11,10 @@ private:
     std::string name;
     std::string retType;
     std::string signature;
+    int quintStart;
     SymTab varTable;
 public:
-    FunctionEntry(std::string name, std::string retType, std::string signature);
+    FunctionEntry(std::string name, std::string retType, std::string signature, int quintStart);
 
     void addToVarTab(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address);
 
@@ -27,10 +28,11 @@ public:
 
 };
 
-FunctionEntry::FunctionEntry(std::string name, std::string retType, std::string signature){
+FunctionEntry::FunctionEntry(std::string name, std::string retType, std::string signature, int quintStart){
     this->name = name;
     this->retType = retType;
     this->signature = signature;
+    this->quintStart = quintStart;
     this->varTable = SymTab(name, name);
 }
 
@@ -46,11 +48,12 @@ public:
     FuncTab();
     FuncTab(std::string name);
 
-    void addFuncTable(std::string id, std::string retType, std::string signature);
+    void addFuncTable(std::string id, std::string retType, std::string signature, int quintStart);
     void addFuncTable(std::string id, FunctionEntry newEntry);
 
     void updateFuncTable(std::string id, SymTab newEntry);
 
+    std::string getIdSignature(std::string funcId);
     void updateSignature(std::string funcId, std::string signature);
 
     FunctionEntry getFunction(std::string id);
@@ -73,8 +76,8 @@ FunctionEntry FuncTab::getFunction(std::string id){
     return x->second;
 }
 
-void FuncTab::addFuncTable(std::string id, std::string retType, std::string signature){
-    FunctionEntry temp = FunctionEntry(id, retType, signature);
+void FuncTab::addFuncTable(std::string id, std::string retType, std::string signature, int quintStart){
+    FunctionEntry temp = FunctionEntry(id, retType, signature, quintStart);
     funcEntries.insert(make_pair(id, temp));
 }
 
@@ -94,6 +97,14 @@ void FuncTab::updateSignature(std::string funcId, std::string signature){
     if(it != this->funcEntries.end()){
         it->second.setSignature(signature);
     }
+}
+
+std::string FuncTab::getIdSignature(std::string funcId){
+     std::unordered_map<std::string, FunctionEntry>::iterator it = this->funcEntries.find(funcId);
+    if(it != this->funcEntries.end()){
+        return it->second.getSignature();
+    }
+    return "";
 }
 
 
