@@ -17,8 +17,6 @@ whitespace (" " | [\t] | [\n] | [\r])
 %%
 "program"               { return PROGRAM; }
 "var"                   { return VAR; }
-"class"                 { return CLASS; }
-"->"                    { return INHERIT; }
 "main"                  { return MAIN; }
 
 "in"                    { yylval.id = (char *) strdup(yytext); return INT; }
@@ -35,10 +33,16 @@ whitespace (" " | [\t] | [\n] | [\r])
 "else"                  { return ELSE; }
 
 "wh"                    { return WHILE; }
-"fo"                    { return FOR; }
 
 "rd"                    { return READ; }
 "wr"                    { return WRITE; }
+
+"crtCv"                {return CR_CANV;}
+"clrCv"                {return CL_CANV;}
+"delCv"                {return DL_CANV;}
+"drRct"                {return DR_RECT;}
+"drLne"                {return DR_LINE;}
+"drPix"                {return DR_PIX;}
 
 {id}                    { yylval.id = (char *) strdup(yytext); return ID; }
 

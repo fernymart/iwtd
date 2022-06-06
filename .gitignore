@@ -13,3 +13,4 @@ testSymTab
 testing
 iwtd.exe
 *.ovejota
+__pycache__/

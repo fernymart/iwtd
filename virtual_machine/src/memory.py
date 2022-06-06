@@ -115,3 +115,14 @@ class globalMemory:
         if(pos < 8000):
             return self.memSpace[2][pos - 7000]
         
+class pointerMemory:
+    memSpace = []
+    def __init__(self, space):
+        self.memSpace = [0]*space
+    def fill(self, pos, val):
+        # print(self.memSpace)
+        # print(pos, "   dslajfsd   ", pos-26000, " DFASAF ", val)
+        self.memSpace[pos - 26000] = int(val)
+    
+    def at(self, pos):
+        return self.memSpace[pos - 26000]

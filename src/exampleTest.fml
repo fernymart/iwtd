@@ -1,6 +1,6 @@
 program example;
 
-var in a, b, c, d;
+var in a, b, c, d[10], e;
 
 fun flt multiplica(flt num1, flt num2){
     //rt num1*num2;
@@ -9,10 +9,28 @@ fun flt multiplica(flt num1, flt num2){
 
 
 main () {
-    a = 10;
+    a = 0;
     b = 11;
+    c = 25;
+    e = 3;
     wr(a);
     rd(a);
+    d[1+2]  = 16;
+    wr("arr en 1 + 2", d[1+2]);
+    wr("arr en 3", d[3]);
+    wr("arr en e", d[e]);
+    wr("a", a);
+    wh(a < 10){
+        d[a] = c;
+        c = c + 1;
+        a = a + 1;
+        wr("en while 1");
+    }
+    e = 0;
+    wh(e < 10){
+        wr(d[e]);
+        e = e+1;
+    }
 
     wh(a < 15){
         wh(b < 16){

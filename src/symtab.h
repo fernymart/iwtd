@@ -4,11 +4,6 @@
 #include <vector>
 #include <unordered_map>
 
-struct dimension{
-    int size;
-    dimension* next;
-};
-
 class Entry{
 private:
     std::string id;
@@ -17,7 +12,7 @@ private:
     std::string scope;
     int lineNum;
     int address;
-    dimension* dims;
+    int dim;
 public:
     Entry(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address);
 
@@ -39,7 +34,9 @@ public:
     int getAddress(){return this->address;};
     void setAddress(int address){this->address = address;};
 
-//     void addDim
+    void setArrSize(int size){this->dim = size;};
+    int getArrSize(){return this->dim;};
+
 };
 
 Entry::Entry(std::string id, std::string type, std::string dataType, std::string scope, int lineNum, int address){
@@ -49,6 +46,7 @@ Entry::Entry(std::string id, std::string type, std::string dataType, std::string
     this->scope = scope;
     this->lineNum = lineNum;
     this->address = address;
+    this->dim = 0;
 }
 
 class SymTab{
@@ -76,6 +74,9 @@ public:
 
     std::string getIdDataType(std::string id);
     // int hashFuntion(std::string id);
+
+    void setIdArrSize(std::string id, int size);
+    int getIdArrSize(std::string id);
 };
 
 SymTab::SymTab(){
@@ -111,6 +112,16 @@ bool SymTab::exists(std::string id){
     return false;
 }
 
+void SymTab::setIdArrSize(std::string id, int size){
+        if(table.count(id) > 0){
+            table.at(id).setArrSize(size);
+        }
+}
+
+int SymTab::getIdArrSize(std::string id){
+    return table.at(id).getArrSize();
+}
+
 int SymTab::getIdAddress(std::string id){
     return table.at(id).getAddress();
 }
@@ -118,6 +129,7 @@ int SymTab::getIdAddress(std::string id){
 std::string SymTab::getIdDataType(std::string id){
     return table.at(id).getDataType();
 }
+
 // int SymTab::hashFuntion(std::string id){
 //     return 0;
 // }Entry

@@ -38,6 +38,8 @@
     #define BASE_CTE_CHAR 23500 // 23500 - 23999
     #define BASE_CTE_STR 24000 // 24000 - 25999
 
+    #define BASE_TEMP_PTR 26000 //26000 - 26999
+
 
 
     #define YYERROR_VERBOSE 1
@@ -51,6 +53,7 @@
     bool constExists(std::string id);
     std::string getTypeFromNum(int tipo);
     bool checkCurrParam(std::string currCallSign, int currCallPos,  std::string currParamSign);
+    int getArrSize(std::string id);
 
     struct opTipos{
         std::string idT;
@@ -85,6 +88,7 @@
     int addressIntTemp = BASE_TEMP_IN;
     int addressFltTemp = BASE_TEMP_FLT;
     int addressBoolTemp = BASE_TEMP_BIN;
+    int addressPointTemp = BASE_TEMP_PTR;
 
     int addressIntCurr;
     int addressFltCurr;
@@ -106,6 +110,14 @@
 
     bool canReturn = false;
     bool hasReturn = false;
+
+    int arrSize = 0;
+    bool isArray = false;
+
+    int currVarAdd;
+    std::string currVarType;
+    std::string currVarId;
+    int currVarSize;
 
     std::unordered_map<std::string, int> types = {
         {"in", 0},
@@ -174,11 +186,11 @@
 //     FunctionEntry funcScope;
 }
 
-%token PROGRAM VAR CLASS INHERIT MAIN
+%token PROGRAM VAR MAIN
 %token <type> INT FLOAT STRING CHAR
 %token FUN VOID RETURN
 %token IF ELIF ELSE
-%token WHILE FOR
+%token WHILE
 %token READ WRITE
 %token <id> CTE_INT CTE_FLT
 %token <id> CTE_CHR CTE_STR
@@ -187,6 +199,7 @@
 %token ADD SUB MULT DIV
 %token <id> G_ET L_ET EQ NEQ GT LT ASGN
 %token LP RP LCB RCB LSB RSB
+%token CR_CANV CL_CANV DL_CANV DR_RECT DR_LINE DR_PIX
 %token OR AND
 // %token WS
 
@@ -197,7 +210,7 @@
 //
 %type<type> TIPO_SIMPLE;
 
-%type<expRes> M_EXP S_EXP G_EXP TERMINO FACTOR VAR_CTE VARIABLE
+%type<expRes> M_EXP S_EXP G_EXP TERMINO FACTOR VAR_CTE VARIABLE VARIABLE_COMP
 
 %type<id> ARIT_MULT_DIV ARIT_SUM_RES COMPARATOR andor
 
@@ -246,9 +259,20 @@ VARIABLES: VAR TIPO_SIMPLE ID{
     if(currScope->exists($3)){
         yyerror("Variable already declared.");
     }
-    currScope->add($3, "var", currentType, "global", yylineno, currAdd++);
+    currScope->add($3, "var", currentType, "global", yylineno, currAdd);
 
-} VAR_ARR VAR_MULTIPLE SMCLN {
+} VAR_ARR{
+    if(isArray){
+        currAdd += arrSize;
+        currScope->setIdArrSize($3, arrSize);
+    }else{
+        currAdd += 1;
+    }
+
+    isArray = false;
+    arrSize = 0;
+}VAR_MULTIPLE SMCLN {
+
     if(currentType == "in"){
         addressIntCurr = currAdd;
     }else if(currentType == "flt"){
@@ -256,17 +280,36 @@ VARIABLES: VAR TIPO_SIMPLE ID{
     }else{
         addressCharCurr = currAdd;
     }
+
 };
 
-VAR_ARR: LSB CTE_INT RSB VAR_MAT
-| ;
+VAR_ARR: LSB CTE_INT{
+    if(!constExists($2)){
+        constantes.add($2, "const", "in", "global", yylineno, addressIntConst);
+        addressIntConst++;
+    }
+    arrSize = atoi($2);
+    if(arrSize < 1){
+        yyerror("Array size must be at least 1");
+    }
+    isArray = true;
 
-VAR_MAT: LSB CTE_INT RSB
+} RSB
 | ;
 
 VAR_MULTIPLE: COMMA ID {
-    currScope->add($2, "var", currentType, "global", yylineno, currAdd++);
-} VAR_ARR VAR_MULTIPLE
+    currScope->add($2, "var", currentType, "global", yylineno, currAdd);
+} VAR_ARR {
+    if(isArray){
+        currAdd += arrSize;
+        currScope->setIdArrSize($2, arrSize);
+    }else{
+        currAdd += 1;
+    }
+
+    isArray = false;
+    arrSize = 0;
+}VAR_MULTIPLE
 | ;
 
 TIPO_SIMPLE: INT {
@@ -344,7 +387,6 @@ PARAMETROS: TIPO_SIMPLE ID {
     cout << currScope->getID() << " " << currAdd << '\n';
     currSignature+=to_string(types[$1]);
     updateCurrTypeAddress(types[$1], currAdd);
-//     std::cout << "CURR SIGNATURE " << currSignature << " PARAM TYPE " << types[$1] << '\n';
 } PARAMETROS_MULTIPLE
 | ;
 
@@ -361,12 +403,17 @@ ESTATUTO: VARIABLES
 | ESCRIBE SMCLN
 | CONDICIONAL
 | CICLO_WH
+| CR_CANV_FUN SMCLN
+| CL_CANV_FUN SMCLN
+| DL_CANV_FUN SMCLN
+| DR_RECT_FUN SMCLN
+| DR_LINE_FUN SMCLN
+| DR_PIX_FUN SMCLN
 | RT SMCLN;
 
 RT: RETURN M_EXP {
     if(!canReturn){
         yyerror("Cannot use a return in a void or main function");
-//         throw std::invalid_argument("Incorrect file type, make sure the file extension is .fml");
     }
     createQuint("RET", -1, -1, $2.dir, -1);
     contQuints++;
@@ -379,9 +426,6 @@ ASIGNA: VARIABLE ASGN M_EXP {
     }
     createQuint($2, $3.dir, -1, $1.dir, -1);
     contQuints++;
-//     $$ = {"temp", "boo", addressBoolTemp++};
-
-//     std::cout << "=" << " " << $3.id << " " << $1.id << '\n';
 };
 
 LLAMADA: FUNC_ID {
@@ -432,10 +476,6 @@ ESCRIBE: WRITE LP M_EXP {
     }
     createQuint("WRITE", add, -1, -1, -1);
     contQuints++;
-
-//     if(){
-//
-//     }
 } ESCRIBE_MULTIPLE RP;
 
 ESCRIBE_MULTIPLE: COMMA M_EXP {
@@ -473,22 +513,18 @@ CONDICIONAL: IF LP M_EXP RP {
 COND_ELIF_ELSE: ELIF{
     createQuint("GOTO", -1, -1, -1, -1);
     contQuints++;
-//     quintuplesVect[pSaltos.top()].result = contQuints + 1;
     int fal = pSaltos.top();
     pSaltos.pop();
 
     fill(fal, contQuints);
     pSaltos.push(contQuints-1);
-//     contQuints++;
 } LP M_EXP RP{
-//     cout << $3 <<  '\n';
     if(types[$4.tipo] != 3){
         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
     }
     createQuint("GOTOF", $4.dir, -1, -1, -1);
     contQuints++;
     pSaltos.push(contQuints-1);
-
 } LCB ESTATUTOS RCB COND_ELIF_ELSE{
     int fal = pSaltos.top();
     pSaltos.pop();
@@ -497,7 +533,6 @@ COND_ELIF_ELSE: ELIF{
 |  ELSE{
     createQuint("GOTO", -1, -1, -1, -1);
     contQuints++;
-//     quintuplesVect[pSaltos.top()].result = contQuints + 1;
     int fal = pSaltos.top();
     pSaltos.pop();
 
@@ -506,116 +541,6 @@ COND_ELIF_ELSE: ELIF{
 }LCB ESTATUTOS RCB
 |;
 
-// CONDICIONAL: IF LP M_EXP RP {
-//     if(types[$3.tipo] != 3){
-//         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
-//     }
-//     createQuint("GOTOF", $3.dir, -1, -1, -1);
-//     contQuints++;
-//     pSaltos.push(contQuints-1);
-//
-// } LCB ESTATUTOS RCB{
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//     fill(fal, contQuints);
-// } COND_1{
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//     fill(fal, contQuints);
-// };
-
-// COND_1: ELIF{
-//     createQuint("GOTO", -1, -1, -1, -1);
-//     contQuints++;
-// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//     fill(fal, contQuints);
-// //     pSaltos.pop();
-//     pSaltos.push(contQuints - 1);
-// //     contQuints++;
-// } LP M_EXP RP{
-// //     cout << $3 <<  '\n';
-//     if(types[$4.tipo] != 3){
-//         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
-//     }
-//     createQuint("GOTOF", $4.dir, -1, -1, -1);
-//     contQuints++;
-//     pSaltos.push(contQuints - 1);
-//
-// } LCB ESTATUTOS RCB {
-// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
-// //     pSaltos.pop();
-// //     createQuint("GOTO", -1, -1, -1, -1);
-// //     contQuints++;
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//     fill(fal, contQuints);
-//
-// }
-// | ELSE{
-//     createQuint("GOTO", -1, -1, -1, -1);
-//     contQuints++;
-// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//
-//     fill(fal, contQuints);
-//     pSaltos.push(contQuints-1);
-// }LCB ESTATUTOS RCB{
-// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
-// //     pSaltos.pop();
-// //     int fal = pSaltos.top();
-// //     pSaltos.pop();
-// //     fill(fal, contQuints);
-// }
-// | ;
-
-// COND_ELIF: ELIF{
-//     createQuint("GOTO", -1, -1, -1, -1);
-//     contQuints++;
-// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
-//     int fal = pSaltos.top();
-//     pSaltos.pop();
-//
-//     fill(fal, contQuints);
-//     pSaltos.push(contQuints-1);
-// //     contQuints++;
-// } LP M_EXP RP{
-// //     cout << $3 <<  '\n';
-//     if(types[$3.tipo] != 3){
-//         yyerror("EXPRESSION IS NOT BOOLEAN TYPE");
-//     }
-//     createQuint("GOTOF", $3.dir, -1, -1, -1);
-//     contQuints++;
-//     pSaltos.push(contQuints-1);
-//
-// } LCB ESTATUTOS RCB {
-// //     quintuplesVect[pSaltos.top()].result = contQuints + 1;
-// //     pSaltos.pop();
-// //     createQuint("GOTO", -1, -1, -1, -1);
-// //     contQuints++;
-// //     int fal = pSaltos.top();
-// //     pSaltos.pop();
-// //     fill(fal, contQuints);
-//
-// }COND_ELIF{
-// //     int fal = pSaltos.top();
-// //     pSaltos.pop();
-// //     fill(fal, contQuints+1);
-// }
-// | ;
-
-COND_ELSE: ELSE{
-    createQuint("GOTO", -1, -1, -1, -1);
-    contQuints++;
-    int fal = pSaltos.top();
-    pSaltos.pop();
-
-    fill(fal, contQuints);
-    pSaltos.push(contQuints-1);
-}LCB ESTATUTOS RCB
-| ;
 
 CICLO_WH: WHILE {
     pSaltos.push(contQuints);
@@ -638,26 +563,86 @@ CICLO_WH: WHILE {
      fill(end, contQuints);
 };
 
-VARIABLE: ID VARIABLE_COMP {
+VARIABLE:ID{
     if(!checkExists($1)){
         std::string newStr = "Variable " + (std::string)($1) + " was not declared in this scope.";
         yyerror(const_cast<char*>(newStr.c_str()));
     }
-    
+    currVarId = $1;
+    currVarAdd = getAddress($1);
+    currVarType = getDataType($1);
+    currVarSize = getArrSize($1);
+} LSB{
+    if(currVarSize < 1){
+        std::string newStr = "Variable " + currVarId + " was not declared as an array.";
+        yyerror(const_cast<char*>(newStr.c_str()));
+    }
+//     std::cout << $1 << " was declared as an array\n";
+//     isArray = true;
+} M_EXP{
+    int currZeroAdd;
+    if(!constExists("0")){
+        constantes.add("0", "const", "in", "global", yylineno, addressIntConst);
+        addressIntConst++;
+        currZeroAdd = addressIntConst-1;
+    }else{
+        currZeroAdd = constantes.getIdAddress("0");
+    }
+    createQuint("VER", $5.dir, currZeroAdd, constantes.getIdAddress(to_string(currVarSize)), -1);
+    contQuints++;
+} RSB {
+    int currBaseAdd;
+    if(!constExists(to_string(currVarAdd))){
+        constantes.add(to_string(currVarAdd), "const", "in", "global", yylineno, addressIntConst);
+        addressIntConst++;
+        currBaseAdd = addressIntConst-1;
+    }else{
+        currBaseAdd = constantes.getIdAddress(to_string(currVarAdd));
+    }
+    createQuint("+", $5.dir, currBaseAdd, addressPointTemp++, -1);
+    contQuints++;
+    $$ = {const_cast<char*>(currVarId.c_str()), const_cast<char*>(currVarType.c_str()), -(addressPointTemp-1)};
+}
+| ID{
+    if(!checkExists($1)){
+        std::string newStr = "Variable " + (std::string)($1) + " was not declared in this scope.";
+        yyerror(const_cast<char*>(newStr.c_str()));
+    }
     int add = getAddress($1);
     std::string type = getDataType($1);
-
-//     pilaO.push({$1, "try"});
-
     $$ = {$1, const_cast<char*>(type.c_str()), add};
 };
 
-VARIABLE_COMP: LSB G_EXP RSB VARIABLE_MAT
-| DOT ID
-| ;
-
-VARIABLE_MAT: LSB G_EXP RSB
-| ;
+// VARIABLE_COMP: LSB{
+//     if(currVarSize < 1){
+//         std::string newStr = "Variable " + currVarId + " was not declared as an array.";
+//         yyerror(const_cast<char*>(newStr.c_str()));
+//     }
+//     isArray = true;
+// } M_EXP{
+//     int currZeroAdd;
+//     if(!constExists("0")){
+//         constantes.add("0", "const", "in", "global", yylineno, addressIntConst);
+//         addressIntConst++;
+//         currZeroAdd = addressIntConst-1;
+//     }else{
+//         currZeroAdd = constantes.getIdAddress("0");
+//     }
+//     createQuint("VER", $3.dir, currZeroAdd, constantes.getIdAddress(to_string(currVarSize)), -1);
+//     contQuints++;
+// } RSB {
+//     int currBaseAdd;
+//     if(!constExists(to_string(currVarAdd))){
+//         constantes.add(to_string(currVarAdd), "const", "in", "global", yylineno, addressIntConst);
+//         addressIntConst++;
+//         currBaseAdd = addressIntConst-1;
+//     }else{
+//         currBaseAdd = constantes.getIdAddress(to_string(currVarAdd));
+//     }
+//     createQuint("+", $3.dir, currBaseAdd, addressPointTemp++, -1);
+//     contQuints++;
+//     $$ = {const_cast<char*>(currVarId.c_str()), const_cast<char*>(currVarType.c_str()), addressPointTemp-1};
+// };
 
 andor: AND {$$ = "&&";}
 | OR {$$ = "||";};
@@ -747,40 +732,18 @@ TERMINO: TERMINO ARIT_MULT_DIV TERMINO {
     }
 
     contQuints++;
-//     std::cout << "esto debe de dar" << retType << "esto es lo que da" <<  const_cast<char*>(retType.c_str()) << "wet" << '\n';
-//     std::cout << $2 << " " << $1.id << " " << $3.id << " " << retAdd << " " << -1 << '\n';
     $$ = {"tempmultdiv", const_cast<char*>(retType.c_str()), retAdd};
 }
 | FACTOR {$$ = $1;};
-
-// EXP: EXP_AND EXP_1;
-// EXP_1: OR EXP
-// | ;
-//
-// EXP_AND: EXP_OPREL EXP_AND_1;
-// EXP_AND_1: AND EXP_AND
-// | ;
-//
-// EXP_OPREL: EXP_ARIT EXP_OPREL_1;
-// EXP_OPREL_1: COMPARATOR EXP_OPREL
-// | ;
-//
-// EXP_ARIT: TERMINO EXP_ARIT_1;
-// EXP_ARIT_1: ARIT_SUM_RES TERMINO //EXP_ARIT_1
-// | ;
-//
-// TERMINO: FACTOR TERMINO_1;
-// TERMINO_1: ARIT_MULT_DIV FACTOR //TERMINO_1
-// | ;
 
 FACTOR: LP M_EXP RP {
     $$ = $2;
 }
 | VAR_CTE
-| SIGNO VARIABLE {
-    $$ = $2;
+| VARIABLE {
+    $$ = $1;
 }
-| SIGNO LLAMADA {
+| LLAMADA {
     $$ = {"LLAM", "FUNC"};
 };
 
@@ -792,22 +755,130 @@ VAR_CTE: CTE_INT {
     $$ = {$1, "in", constantes.getIdAddress($1)};
 }
 | CTE_FLT {
-    constantes.add($1, "const", "flt", "global", yylineno, addressFltConst);
+     if(!constExists($1)){
+        constantes.add($1, "const", "flt", "global", yylineno, addressFltConst);
+        addressFltConst++;
+    }
     $$ = {$1, "flt", addressFltConst};
-    addressFltConst++;
 }
 | CTE_CHR{
-    constantes.add($1, "const", "ch", "global", yylineno, addressCharConst);
+    if(!constExists($1)){
+        constantes.add($1, "const", "ch", "global", yylineno, addressCharConst);
+        addressCharConst++;
+    }
     $$ = {$1, "ch", addressCharConst};
-    addressCharConst++;
 };
 
-SIGNO: SUB
-| ;
+CR_CANV_FUN: CR_CANV LP M_EXP{
+    if($3.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+} COMMA M_EXP{
+    if($6.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+} RP{
+    if(!isGraphical){
+        isGraphical = true;
+        createQuint("CR_CANV", $3.dir, $6.dir, -1, -1);
+        contQuints++;
+    }else{
+        yyerror("A canvas has already  been created.");
+    }
+};
+
+CL_CANV_FUN: CL_CANV LP RP{
+    if(isGraphical){
+        createQuint("CL_CANV", -1, -1, -1, -1);
+        contQuints++;
+    }else{
+        yyerror("A canvas has not been declared yet.");
+    }
+};
+
+DL_CANV_FUN: DL_CANV LP RP {
+    if(isGraphical){
+        isGraphical = false;
+        createQuint("DEL_CANV", -1, -1, -1, -1);
+        contQuints++;
+    }else{
+        yyerror("A canvas has not been declared yet.");
+    }
+};
+
+DR_RECT_FUN: DR_RECT LP M_EXP {
+    if($3.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+}COMMA M_EXP{
+    if($6.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+}COMMA M_EXP{
+    if($9.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+} COMMA M_EXP{
+    if($12.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+} RP{
+    if(isGraphical){
+        isGraphical = false;
+        createQuint("DR_RECT", $3.dir, $6.dir, $9.dir, $12.dir);
+        contQuints++;
+    }else{
+        yyerror("A canvas has not been declared yet.");
+    }
+};
+
+DR_LINE_FUN: DR_LINE LP M_EXP {
+    if($3.tipo != "in"){
+        yyerror("Expected integer expression for the first argument");
+    }
+}COMMA M_EXP{
+    if($6.tipo != "in"){
+        yyerror("Expected integer expression for the second argument");
+    }
+}COMMA M_EXP{
+    if($9.tipo != "in"){
+        yyerror("Expected integer expression for the third argument");
+    }
+} COMMA M_EXP{
+    if($12.tipo != "in"){
+        yyerror("Expected integer expression for the fourth argument");
+    }
+} RP{
+    if(isGraphical){
+        isGraphical = false;
+        createQuint("DR_LINE", $3.dir, $6.dir, $9.dir, $12.dir);
+        contQuints++;
+    }else{
+        yyerror("A canvas has not been declared yet.");
+    }
+};
+
+DR_PIX_FUN : DR_PIX LP M_EXP{
+    if($3.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+} COMMA M_EXP{
+    if($6.tipo != "in"){
+        yyerror("Expected integer expression for first argument");
+    }
+} RP{
+    if(isGraphical){
+        isGraphical = false;
+        createQuint("DR_PIX", $3.dir, $6.dir, -1, -1);
+        contQuints++;
+    }else{
+        yyerror("A canvas has not been declared yet.");
+    }
+};
+
 %%
 
 int main(int, char** c){
-//     cout << c[1] << endl;
     std::string fileName = c[1];
     if(fileName.substr(fileName.find_last_of(".")+1) != "fml"){
         throw std::invalid_argument("Incorrect file type, make sure the file extension is .fml");
@@ -819,25 +890,19 @@ int main(int, char** c){
         return -1;
     }
 
-//     global.getTable();
-
     yyin = myfile;
     yyparse();
 
-    cout << types["i"] << '\t' << types["i"] << '\t' << types["+"] << '\n';
-
-//     std::cout << "SHEEESH " << checkCube(types["+"], types["i"], types["i"]) << '\n';
-//     std::cout << "SHEEESH " << checkCube(2, 0, 0) << '\n';
+//     cout << types["i"] << '\t' << types["i"] << '\t' << types["+"] << '\n';
 
     std::unordered_map<std::string, Entry> table = global.getTable();
     for(auto& it: table){
-        cout << it.second.getID() << " " << it.second.getDataType() << " " << it.second.getAddress() << '\n';
+        cout << it.second.getID() << " " << it.second.getDataType() << " " << it.second.getAddress() << " " << it.second.getArrSize() << '\n';
     }
 
     std::unordered_map<std::string, FunctionEntry> functionEntries = functions.getFunctions();
 
     for(auto& it: functionEntries){
-//         std::cout << it.first << " " << it.second.getVarTab().getID() << '\n';
         std::cout << "Function name: " << it.second.getName() << " Signature: " << it.second.getSignature() << '\n';
 
          std::unordered_map<std::string, Entry> funcEntries = it.second.getVarTab().getTable();
@@ -852,18 +917,12 @@ int main(int, char** c){
         cout << it.second.getID() << " " << it.second.getDataType() << " " << it.second.getAddress() << '\n';
     }
 
-//     std::cout << "Inicia pilaO\n";
     int quadNum = 0;
     for(auto& it:quintuplesVect){
         cout << "QUAD NUMBER: " << quadNum << '\n';
         cout << it.opCode << " " << it.dirOp1 << " " << it.dirOp2 << " " << it.result << " " << it.graphicalReserve << '\n';
         quadNum++;
     }
-//     while(!pilaO.empty()){
-//         std::cout << pilaO.top().idT << '\t' << pilaO.top().tipo << '\n';
-//         pilaO.pop();
-//
-//     }
 
     ofstream outfile("OVEJOTA.ovejota");
     for(auto& it: tableConst){
@@ -877,11 +936,8 @@ int main(int, char** c){
     outfile << "~~~~~~~~~~\n";
 
     outfile << "~~~~~~~~~~\n";
-//     int quadNum = 0;
     for(auto& it:quintuplesVect){
-//         cout << "QUAD NUMBER: " << quadNum << '\n';
         outfile << it.opCode << " " << it.dirOp1 << " " << it.dirOp2 << " " << it.result << " " << it.graphicalReserve << '\n';
-//         quadNum++;
     }
     outfile.close();
 
@@ -895,7 +951,6 @@ void yyerror(const char *s){
 }
 
 void createQuint(std::string command, int op1, int op2, int res, int graphRes){
-//     cout << command << " " << op1 << " " << op2 << " " << res << " " << graphRes << '\n';
     quintuplesVect.push_back({command, op1, op2, res, graphRes});
 }
 
@@ -904,6 +959,15 @@ bool checkExists(std::string id){
         return true;
     }
     return false;
+}
+
+int getArrSize(std::string id){
+     if(currScope->exists(id)){
+        return currScope->getIdArrSize(id);
+    }else if(global.exists(id)){
+        return global.getIdArrSize(id);
+    }
+    return -1;
 }
 
 int getAddress(std::string id){
