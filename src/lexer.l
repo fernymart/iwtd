@@ -24,6 +24,13 @@ whitespace (" " | [\t] | [\n] | [\r])
 "st"                    { yylval.id = (char *) strdup(yytext); return STRING; }
 "ch"                    { yylval.id = (char *) strdup(yytext); return CHAR; }
 
+"crtCv"                {return CR_CANV;}
+"clrCv"                {return CL_CANV;}
+"delCv"                {return DL_CANV;}
+"drRct"                {return DR_RECT;}
+"drLne"                {return DR_LINE;}
+"drPix"                {return DR_PIX;}
+
 "fun"                   { return FUN; }
 "vo"                    { return VOID; }
 "rt"                    { return RETURN; }
@@ -36,13 +43,6 @@ whitespace (" " | [\t] | [\n] | [\r])
 
 "rd"                    { return READ; }
 "wr"                    { return WRITE; }
-
-"crtCv"                {return CR_CANV;}
-"clrCv"                {return CL_CANV;}
-"delCv"                {return DL_CANV;}
-"drRct"                {return DR_RECT;}
-"drLne"                {return DR_LINE;}
-"drPix"                {return DR_PIX;}
 
 {id}                    { yylval.id = (char *) strdup(yytext); return ID; }
 

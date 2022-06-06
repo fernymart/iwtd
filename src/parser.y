@@ -398,17 +398,17 @@ ESTATUTOS: ESTATUTO ESTATUTOS
 
 ESTATUTO: VARIABLES
 | ASIGNA SMCLN
-| LLAMADA SMCLN
-| LEE SMCLN
-| ESCRIBE SMCLN
-| CONDICIONAL
-| CICLO_WH
 | CR_CANV_FUN SMCLN
 | CL_CANV_FUN SMCLN
 | DL_CANV_FUN SMCLN
 | DR_RECT_FUN SMCLN
 | DR_LINE_FUN SMCLN
 | DR_PIX_FUN SMCLN
+| LLAMADA SMCLN
+| LEE SMCLN
+| ESCRIBE SMCLN
+| CONDICIONAL
+| CICLO_WH
 | RT SMCLN;
 
 RT: RETURN M_EXP {
@@ -783,7 +783,7 @@ CR_CANV_FUN: CR_CANV LP M_EXP{
         createQuint("CR_CANV", $3.dir, $6.dir, -1, -1);
         contQuints++;
     }else{
-        yyerror("A canvas has already  been created.");
+        yyerror("A canvas has already been created.");
     }
 };
 
@@ -807,24 +807,23 @@ DL_CANV_FUN: DL_CANV LP RP {
 };
 
 DR_RECT_FUN: DR_RECT LP M_EXP {
-    if($3.tipo != "in"){
+    if(types[$3.tipo] != 0){
         yyerror("Expected integer expression for first argument");
     }
 }COMMA M_EXP{
-    if($6.tipo != "in"){
-        yyerror("Expected integer expression for first argument");
+    if(types[$6.tipo] != 0){
+        yyerror("Expected integer expression for second argument");
     }
 }COMMA M_EXP{
-    if($9.tipo != "in"){
-        yyerror("Expected integer expression for first argument");
+    if(types[$9.tipo] != 0){
+        yyerror("Expected integer expression for third argument");
     }
 } COMMA M_EXP{
-    if($12.tipo != "in"){
-        yyerror("Expected integer expression for first argument");
+    if(types[$12.tipo] != 0){
+        yyerror("Expected integer expression for fourth argument");
     }
 } RP{
     if(isGraphical){
-        isGraphical = false;
         createQuint("DR_RECT", $3.dir, $6.dir, $9.dir, $12.dir);
         contQuints++;
     }else{
@@ -833,24 +832,23 @@ DR_RECT_FUN: DR_RECT LP M_EXP {
 };
 
 DR_LINE_FUN: DR_LINE LP M_EXP {
-    if($3.tipo != "in"){
-        yyerror("Expected integer expression for the first argument");
+   if(types[$3.tipo] != 0){
+        yyerror("Expected integer expression for first argument");
     }
 }COMMA M_EXP{
-    if($6.tipo != "in"){
-        yyerror("Expected integer expression for the second argument");
+    if(types[$6.tipo] != 0){
+        yyerror("Expected integer expression for second argument");
     }
 }COMMA M_EXP{
-    if($9.tipo != "in"){
-        yyerror("Expected integer expression for the third argument");
+    if(types[$9.tipo] != 0){
+        yyerror("Expected integer expression for third argument");
     }
 } COMMA M_EXP{
-    if($12.tipo != "in"){
-        yyerror("Expected integer expression for the fourth argument");
+    if(types[$12.tipo] != 0){
+        yyerror("Expected integer expression for fourth argument");
     }
 } RP{
     if(isGraphical){
-        isGraphical = false;
         createQuint("DR_LINE", $3.dir, $6.dir, $9.dir, $12.dir);
         contQuints++;
     }else{
@@ -859,16 +857,15 @@ DR_LINE_FUN: DR_LINE LP M_EXP {
 };
 
 DR_PIX_FUN : DR_PIX LP M_EXP{
-    if($3.tipo != "in"){
+    if(types[$3.tipo] != 0){
         yyerror("Expected integer expression for first argument");
     }
-} COMMA M_EXP{
-    if($6.tipo != "in"){
-        yyerror("Expected integer expression for first argument");
+}COMMA M_EXP{
+    if(types[$6.tipo] != 0){
+        yyerror("Expected integer expression for second argument");
     }
 } RP{
     if(isGraphical){
-        isGraphical = false;
         createQuint("DR_PIX", $3.dir, $6.dir, -1, -1);
         contQuints++;
     }else{
@@ -1014,7 +1011,7 @@ void updateCurrTypeAddress(int tipo, int currAdd){
 
 bool checkCurrParam(std::string currCallSign, int currCallPos, std::string currParamSign){
     if(currCallPos >= currCallSign.length()){
-        yyerror("unexpected parameter amout for function call");
+        yyerror("unexpected parameter amount for function call");
     }
     if(currParamSign != getTypeFromNum(currCallSign[currCallPos] - '0')){
         std::string errorMsg = "Found parameter of type " + currParamSign + " expected type " + getTypeFromNum(currCallSign[currCallPos] - '0');
