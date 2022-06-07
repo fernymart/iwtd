@@ -1,0 +1,5 @@
+program helloworld;
+
+main () {
+    wr("Hello, World!");
+}

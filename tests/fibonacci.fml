@@ -1,0 +1,21 @@
+program fibonacci;
+
+var in lim, num1, num2, cont, sig;
+
+main () {
+
+    num1 = 0;
+    num2 = 1;
+    cont = 0;
+    sig = 0;
+    wr("Ingresa numero de iteraciones de fibonacci despues de las primeras 2:");
+    rd(lim);
+    wr(num1, num2);
+    wh(cont < lim){
+        sig = num1 + num2;
+        wr(sig);
+        num1 = num2;
+        num2 = sig;
+        cont = cont + 1;
+    }
+}

@@ -1,0 +1,35 @@
+program bubble;
+var in arr[5], i, j, temp;
+main () {
+    i = 0;
+    wh(i < 5){
+        wr("Dame el valor para el indice", i);
+        rd(arr[i]);
+        i = i+1;
+    }
+
+    i = 0;
+    j = 0;
+    temp = 0;
+    wh(i < (5 - 1)){
+        wh(j < ((5 - i) - 1)){
+            //wr("op", 5 - i - 1);
+            //wr("op2", (5 - i) - 1);
+            //wr(j);
+            if(arr[j] > arr[j + 1]){
+                temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+            j = j + 1;
+        }
+        j = 0;
+        i = i + 1;
+    }
+    wr("resultado");
+    i = 0;
+    wh(i < 5){
+        wr(arr[i]);
+        i = i+1;
+    }
+}

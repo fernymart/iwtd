@@ -1,0 +1,29 @@
+program find;
+var in arr[10], i, found, find;
+main () {
+    i = 0;
+    wh(i < 10){
+        wr("Dame el valor para el indice", i);
+        rd(arr[i]);
+        i = i+1;
+    }
+
+    wr("Dame el valor que quieres buscar");
+    rd(find);
+
+    i = 0;
+    found = -1;
+    wh(i < 10){
+        if(arr[i] == find){
+            found = i;
+            i = 10;
+        }
+        //wr(arr[i]);
+        i = i+1;
+    }
+    if(found >= 0){
+        wr("Valor encontrado en el indice", found);
+    }else{
+        wr("El valor no fue encontrado");
+    }
+}

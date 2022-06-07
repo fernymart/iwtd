@@ -39,14 +39,6 @@ def fillMemAt(memAdd, val):
         x = pointersTemp.at(-memAdd);
         fillMemAt(x, val)
 
-def fillPointsTo(memAdd, val):
-    x = pointersTemp.at(memAdd);
-    fillMemAt(x, val)
-
-def getPointsTo(memAdd):
-    x = pointersTemp.at(memAdd)
-    return memAt(x)
-
 pointersTemp = memory.pointerMemory(1000)
 constantes = []
 quints = []
@@ -109,6 +101,8 @@ while True and ip <= len(quints):
         ip+=1
     elif(quint[0] == ">="):
         fillMemAt(int(quint[3]), memAt(int(quint[1])) >= memAt(int(quint[2])))
+        # print("COMPARING", memAt(int(quint[1])), memAt(int(quint[2])))
+        # print("GEQ", memAt(int(quint[1])) >= memAt(int(quint[2])))
         ip+=1
     elif(quint[0] == "<"):
         fillMemAt(int(quint[3]), memAt(int(quint[1])) < memAt(int(quint[2])))
@@ -123,6 +117,8 @@ while True and ip <= len(quints):
         fillMemAt(int(quint[3]), memAt(int(quint[1])) != memAt(int(quint[2])))
         ip+=1
     elif(quint[0] == "&&"):
+        # print("COMPARING", memAt(int(quint[1])), memAt(int(quint[2])))
+        # print("AND", memAt(int(quint[1])) and memAt(int(quint[2])))
         fillMemAt(int(quint[3]), memAt(int(quint[1])) and memAt(int(quint[2])))
         ip+=1
     elif(quint[0] == "||"):
@@ -190,6 +186,7 @@ while True and ip <= len(quints):
         pygame.display.update()
         ip += 1
     elif(quint[0] == "VER"):
+        # print((memAt(int(quint[1]))))
         if(not((memAt(int(quint[1])) >= memAt(int(quint[2]))) and (memAt(int(quint[1])) < memAt(int(quint[3]))))):
             raise Exception("Index out of bounds")
         ip += 1

@@ -10,17 +10,6 @@
     #include "quadruples.h"
     #include "semanticCube.h"
 
-    /*
-        TODO:
-            - actualizar correctamente las direcciones virtuales de las vars
-            - verificar que existan las variables
-            - sacar la direccion dependiendo del scope
-    */
-
-    /*
-        Definir las direcciones bases para cada tipo de dato en cada scope
-    */
-
     #define BASE_GLOBAL_IN 5000 // 5000 - 5999
     #define BASE_GLOBAL_FLT 6000 // 6000 - 6999
     #define BASE_GLOBAL_CHAR 7000 // 7000 - 7999
@@ -39,8 +28,6 @@
     #define BASE_CTE_STR 24000 // 24000 - 25999
 
     #define BASE_TEMP_PTR 26000 //26000 - 26999
-
-
 
     #define YYERROR_VERBOSE 1
 
@@ -210,7 +197,7 @@
 //
 %type<type> TIPO_SIMPLE;
 
-%type<expRes> M_EXP S_EXP G_EXP TERMINO FACTOR VAR_CTE VARIABLE VARIABLE_COMP
+%type<expRes> M_EXP S_EXP G_EXP TERMINO FACTOR VAR_CTE VARIABLE
 
 %type<id> ARIT_MULT_DIV ARIT_SUM_RES COMPARATOR andor
 
@@ -667,6 +654,7 @@ M_EXP: M_EXP andor M_EXP {
 
 //     std::cout << $2 << " " << $1.id << " " << $3.id << '\n';
     createQuint($2, $1.dir, $3.dir, addressBoolTemp, -1);
+    cout << $2 << " " << $1.dir << " " << $3.dir << " " << addressBoolTemp << '\n';
     $$ = {"temp", "boo", addressBoolTemp++};
     contQuints++;
 }

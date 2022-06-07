@@ -1,0 +1,20 @@
+program factorial;
+
+var in num, mult, fact;
+
+main () {
+    mult = 1;
+    wr("Ingresa numero que quieres aplicar su factorial:");
+    rd(num);
+    if(num == 0){
+        fact = 1;
+    }else{
+        wh(num >= 1){
+            mult = mult * num;
+            num = num - 1;
+        }
+        fact = mult;
+    }
+
+    wr("Respuesta de factorial", fact);
+}

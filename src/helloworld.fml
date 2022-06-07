@@ -1,6 +1,0 @@
-program example;
-var in i;
-main () {
-    i = 2/0;
-    wr("Hello, World!", 2);
-}

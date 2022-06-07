@@ -1,0 +1,23 @@
+program cuadListas;
+var in arr[5], arr2[5], arr3[1], i, j, temp;
+main () {
+    i = 0;
+    arr3[0] = 1;
+    wh(i < 5){
+        i = i+1;
+        arr[i - 1] = i;
+    }
+
+
+    i = 0;
+    wh(i < 5){
+        arr2[i] = arr[i] * arr[i];
+        i = i+1;
+    }
+
+    i = 0;
+    wh(i < 5){
+        wr(arr[i], arr2[i]);
+        i = i+1;
+    }
+}

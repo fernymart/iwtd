@@ -21,7 +21,6 @@ whitespace (" " | [\t] | [\n] | [\r])
 
 "in"                    { yylval.id = (char *) strdup(yytext); return INT; }
 "flt"                   { yylval.id = (char *) strdup(yytext); return FLOAT; }
-"st"                    { yylval.id = (char *) strdup(yytext); return STRING; }
 "ch"                    { yylval.id = (char *) strdup(yytext); return CHAR; }
 
 "crtCv"                {return CR_CANV;}
@@ -49,7 +48,7 @@ whitespace (" " | [\t] | [\n] | [\r])
 [-]?[0-9]+              { yylval.id = (char *) strdup(yytext); return CTE_INT; }
 [-]?{digit}+\.{digit}+  { yylval.id = (char *) strdup(yytext); return CTE_FLT; }
 [']{letter}|{digit}[']  { yylval.id = (char *) strdup(yytext); return CTE_CHR; }
-\"(\\.|[^"\\])*\"               { yylval.id = (char *) strdup(yytext); return CTE_STR; }
+\"(\\.|[^"\\])*\"       { yylval.id = (char *) strdup(yytext); return CTE_STR; }
 
 
 
@@ -70,7 +69,6 @@ whitespace (" " | [\t] | [\n] | [\r])
 ">"                     { yylval.id = (char *) strdup(yytext); return GT; }
 "<"                     { yylval.id = (char *) strdup(yytext); return LT; }
 "="                     { yylval.id = (char *) strdup(yytext); return ASGN; }
-"<>"                    { yylval.id = (char *) strdup(yytext); return NEQ; }
 
 "("                     { return LP; }
 ")"                     { return RP; }
